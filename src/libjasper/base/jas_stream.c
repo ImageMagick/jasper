@@ -366,7 +366,7 @@ jas_stream_t *jas_stream_tmpfile()
 
 	/* Choose a file name. */
 	/* tmpnam(obj->pathname); */
-  snprintf(obj->pathname, L_tmpnam, "%stmp.XXXXXXXXXX", P_tmpdir);
+  _snprintf(obj->pathname, L_tmpnam, "%stmp.XXXXXXXXXX", P_tmpdir);
 
 	/* Open the underlying file. */
 	if ((obj->fd = open(obj->pathname, O_CREAT | O_EXCL | O_RDWR | O_TRUNC | O_BINARY,
