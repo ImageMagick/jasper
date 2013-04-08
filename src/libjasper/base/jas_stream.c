@@ -367,6 +367,7 @@ jas_stream_t *jas_stream_tmpfile()
 	/* Choose a file name. */
 	/* tmpnam(obj->pathname); */
   _snprintf(obj->pathname, L_tmpnam, "%stmp.XXXXXXXXXX", P_tmpdir);
+  obj->pathname[L_tmpnam]='\0';
 
 	/* Open the underlying file. */
 	if ((obj->fd = open(obj->pathname, O_CREAT | O_EXCL | O_RDWR | O_TRUNC | O_BINARY,
@@ -375,7 +376,7 @@ jas_stream_t *jas_stream_tmpfile()
 		return 0;
 	}
 
-	/* Unlink the file so that it will disappear if the program
+	/* Unlink the file so that it will disappear if the prograformatm
 	terminates abnormally. */
 	/* Under UNIX, one can unlink an open file and continue to do I/O
 	on it.  Not all operating systems support this functionality, however.
