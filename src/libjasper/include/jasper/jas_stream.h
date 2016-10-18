@@ -288,9 +288,11 @@ typedef struct {
 \******************************************************************************/
 
 /* Open a file as a stream. */
+JAS_EXPORT
 jas_stream_t *jas_stream_fopen(const char *filename, const char *mode);
 
 /* Open a memory buffer as a stream. */
+JAS_EXPORT
 jas_stream_t *jas_stream_memopen(char *buf, int bufsize);
 
 /* Open a file descriptor as a stream. */
@@ -303,6 +305,7 @@ jas_stream_t *jas_stream_freopen(const char *path, const char *mode, FILE *fp);
 jas_stream_t *jas_stream_tmpfile(void);
 
 /* Close a stream. */
+JAS_EXPORT
 int jas_stream_close(jas_stream_t *stream);
 
 /******************************************************************************\
@@ -357,6 +360,7 @@ long jas_stream_setrwcount(jas_stream_t *stream, long rwcnt);
 int jas_stream_read(jas_stream_t *stream, void *buf, int cnt);
 
 /* Write characters from a buffer to a stream. */
+JAS_EXPORT
 int jas_stream_write(jas_stream_t *stream, const void *buf, int cnt);
 
 /* Write formatted output to a stream. */
@@ -385,12 +389,14 @@ int jas_stream_ungetc(jas_stream_t *stream, int c);
 int jas_stream_isseekable(jas_stream_t *stream);
 
 /* Set the current position within the stream. */
+JAS_EXPORT
 long jas_stream_seek(jas_stream_t *stream, long offset, int origin);
 
 /* Get the current position within the stream. */
 long jas_stream_tell(jas_stream_t *stream);
 
 /* Seek to the beginning of a stream. */
+JAS_EXPORT
 int jas_stream_rewind(jas_stream_t *stream);
 
 /******************************************************************************\

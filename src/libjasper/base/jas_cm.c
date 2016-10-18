@@ -141,6 +141,7 @@ static jas_cmprof_t *jas_cmprof_createsycc(void);
 * Color profile class.
 \******************************************************************************/
 
+JAS_EXPORT
 jas_cmprof_t *jas_cmprof_createfromclrspc(int clrspc)
 {
 	jas_iccprof_t *iccprof;

@@ -72,6 +72,7 @@ extern "C" {
 * Functions.
 \******************************************************************************/
 
+JAS_EXPORT
 int jas_init(void);
 
 void jas_cleanup(void);

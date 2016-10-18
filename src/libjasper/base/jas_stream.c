@@ -168,6 +168,7 @@ static jas_stream_t *jas_stream_create()
 	return stream;
 }
 
+JAS_EXPORT
 jas_stream_t *jas_stream_memopen(char *buf, int bufsize)
 {
 	jas_stream_t *stream;
@@ -233,6 +234,7 @@ jas_stream_t *jas_stream_memopen(char *buf, int bufsize)
 	return stream;
 }
 
+JAS_EXPORT
 jas_stream_t *jas_stream_fopen(const char *filename, const char *mode)
 {
 	jas_stream_t *stream;
@@ -457,6 +459,7 @@ static void jas_stream_destroy(jas_stream_t *stream)
 	jas_free(stream);
 }
 
+JAS_EXPORT
 int jas_stream_close(jas_stream_t *stream)
 {
 	/* Flush buffer if necessary. */
@@ -524,6 +527,7 @@ int jas_stream_read(jas_stream_t *stream, void *buf, int cnt)
 	return n;
 }
 
+JAS_EXPORT
 int jas_stream_write(jas_stream_t *stream, const void *buf, int cnt)
 {
 	int n;
@@ -632,11 +636,13 @@ int jas_stream_isseekable(jas_stream_t *stream)
 	}
 }
 
+JAS_EXPORT
 int jas_stream_rewind(jas_stream_t *stream)
 {
 	return jas_stream_seek(stream, 0, SEEK_SET);
 }
 
+JAS_EXPORT
 long jas_stream_seek(jas_stream_t *stream, long offset, int origin)
 {
 	long newpos;

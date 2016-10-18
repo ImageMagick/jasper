@@ -253,6 +253,7 @@ int jas_cxform_optimize(jas_cmxform_t *xform, int optimize);
 
 int jas_clrspc_numchans(int clrspc);
 jas_cmprof_t *jas_cmprof_createfromiccprof(jas_iccprof_t *iccprof);
+JAS_EXPORT
 jas_cmprof_t *jas_cmprof_createfromclrspc(int clrspc);
 jas_iccprof_t *jas_iccprof_createfromcmprof(jas_cmprof_t *prof);
 

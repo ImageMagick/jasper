@@ -97,6 +97,7 @@ jas_matrix_t *jas_seq2d_create(int xstart, int ystart, int xend, int yend)
 	return matrix;
 }
 
+JAS_EXPORT
 jas_matrix_t *jas_matrix_create(int numrows, int numcols)
 {
 	jas_matrix_t *matrix;
@@ -145,6 +146,7 @@ jas_matrix_t *jas_matrix_create(int numrows, int numcols)
 	return matrix;
 }
 
+JAS_EXPORT
 void jas_matrix_destroy(jas_matrix_t *matrix)
 {
 	if (matrix->data_) {

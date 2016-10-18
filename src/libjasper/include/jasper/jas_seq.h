@@ -183,9 +183,11 @@ typedef jas_matrix_t jas_seq_t;
 	(max((matrix)->numrows_, (matrix)->numcols_))
 
 /* Create a matrix with the specified dimensions. */
+JAS_EXPORT
 jas_matrix_t *jas_matrix_create(int numrows, int numcols);
 
 /* Destroy a matrix. */
+JAS_EXPORT
 void jas_matrix_destroy(jas_matrix_t *matrix);
 
 /* Resize a matrix.  The previous contents of the matrix are lost. */

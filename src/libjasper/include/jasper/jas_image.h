@@ -308,6 +308,7 @@ jas_image_t *jas_image_create0(void);
 jas_image_t *jas_image_copy(jas_image_t *image);
 
 /* Deallocate any resources associated with an image. */
+JAS_EXPORT
 void jas_image_destroy(jas_image_t *image);
 
 /* Get the width of the image in units of the image reference grid. */
@@ -404,6 +405,7 @@ void jas_image_destroy(jas_image_t *image);
 uint_fast32_t jas_image_rawsize(jas_image_t *image);
 
 /* Create an image from a stream in some specified format. */
+JAS_EXPORT
 jas_image_t *jas_image_decode(jas_stream_t *in, int fmt, char *optstr);
 
 /* Write an image to a stream in a specified format. */
@@ -413,6 +415,7 @@ int jas_image_encode(jas_image_t *image, jas_stream_t *out, int fmt,
 /* Read a rectangular region of an image component. */
 /* The position and size of the rectangular region to be read is specified
 relative to the component's coordinate system. */
+JAS_EXPORT
 int jas_image_readcmpt(jas_image_t *image, int cmptno,
   jas_image_coord_t x, jas_image_coord_t y, jas_image_coord_t width, jas_image_coord_t height,
   jas_matrix_t *data);
@@ -493,6 +496,7 @@ int jas_image_readcmpt2(jas_image_t *image, int cmptno, jas_image_coord_t x,
   long *buf);
 
 #define	jas_image_setcmprof(image, cmprof) ((image)->cmprof_ = cmprof)
+JAS_EXPORT
 jas_image_t *jas_image_chclrspc(jas_image_t *image, jas_cmprof_t *outprof,
   int intent);
 void jas_image_dump(jas_image_t *image, FILE *out);

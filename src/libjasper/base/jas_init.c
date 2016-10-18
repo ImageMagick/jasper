@@ -72,6 +72,7 @@
 \******************************************************************************/
 
 /* Initialize the image format table. */
+JAS_EXPORT
 int jas_init()
 {
 	jas_image_fmtops_t fmtops;

@@ -287,6 +287,7 @@ error:
 	return 0;
 }
 
+JAS_EXPORT
 void jas_image_destroy(jas_image_t *image)
 {
 	int i;
@@ -357,6 +358,7 @@ static void jas_image_cmpt_destroy(jas_image_cmpt_t *cmpt)
 * Load and save operations.
 \******************************************************************************/
 
+JAS_EXPORT
 jas_image_t *jas_image_decode(jas_stream_t *in, int fmt, char *optstr)
 {
 	jas_image_fmtinfo_t *fmtinfo;
@@ -409,6 +411,7 @@ int jas_image_encode(jas_image_t *image, jas_stream_t *out, int fmt, char *optst
 * Component read and write operations.
 \******************************************************************************/
 
+JAS_EXPORT
 int jas_image_readcmpt(jas_image_t *image, int cmptno, jas_image_coord_t x,
   jas_image_coord_t y, jas_image_coord_t width, jas_image_coord_t height,
   jas_matrix_t *data)
@@ -1283,6 +1286,7 @@ static long uptomult(long x, long y)
 	return ((x + y - 1) / y) * y;
 }
 
+JAS_EXPORT
 jas_image_t *jas_image_chclrspc(jas_image_t *image, jas_cmprof_t *outprof,
   int intent)
 {
