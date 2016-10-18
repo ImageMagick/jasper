@@ -212,7 +212,7 @@ jas_stream_t *jas_stream_memopen(char *buf, int bufsize)
 	if (buf) {
 		obj->buf_ = (unsigned char *) buf;
 	} else {
-		obj->buf_ = jas_malloc(obj->bufsize_ * sizeof(char));
+		obj->buf_ = jas_malloc(obj->bufsize_);
 		obj->myalloc_ = 1;
 	}
 	if (!obj->buf_) {
@@ -365,7 +365,7 @@ jas_stream_t *jas_stream_tmpfile()
 	stream->obj_ = obj;
 
 	/* Choose a file name. */
-	tmpnam_s(obj->pathname,L_tmpnam);
+	tmpnam(obj->pathname);
 
 	/* Open the underlying file. */
 	if ((obj->fd = open(obj->pathname, O_CREAT | O_EXCL | O_RDWR | O_TRUNC | O_BINARY,
@@ -374,7 +374,7 @@ jas_stream_t *jas_stream_tmpfile()
 		return 0;
 	}
 
-	/* Unlink the file so that it will disappear if the prograformatm
+	/* Unlink the file so that it will disappear if the program
 	terminates abnormally. */
 	/* Under UNIX, one can unlink an open file and continue to do I/O
 	on it.  Not all operating systems support this functionality, however.
@@ -553,7 +553,7 @@ int jas_stream_printf(jas_stream_t *stream, const char *fmt, ...)
 	int ret;
 
 	va_start(ap, fmt);
-	ret = vsprintf(buf, fmt, ap);
+	ret = vsnprintf(buf, sizeof buf, fmt, ap);
 	jas_stream_puts(stream, buf);
 	va_end(ap);
 	return ret;
@@ -992,7 +992,7 @@ static int mem_resize(jas_stream_memobj_t *m, int bufsize)
 	unsigned char *buf;
 
 	assert(m->buf_);
-	if (!(buf = jas_realloc(m->buf_, bufsize * sizeof(unsigned char)))) {
+	if (!(buf = jas_realloc2(m->buf_, bufsize, sizeof(unsigned char)))) {
 		return -1;
 	}
 	m->buf_ = buf;
@@ -1041,7 +1041,7 @@ static int mem_write(jas_stream_obj_t *obj, char *buf, int cnt)
 	if (m->pos_ > m->len_) {
 		m->len_ = m->pos_;
 	}
-assert(ret == cnt);
+	assert(ret == cnt);
 	return ret;
 }
 

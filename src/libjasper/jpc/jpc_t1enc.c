@@ -219,12 +219,12 @@ int jpc_enc_enccblk(jpc_enc_t *enc, jas_stream_t *out, jpc_enc_tcmpt_t *tcmpt, j
 
 	cblk->numpasses = (cblk->numbps > 0) ? (3 * cblk->numbps - 2) : 0;
 	if (cblk->numpasses > 0) {
-		cblk->passes = jas_malloc(cblk->numpasses * sizeof(jpc_enc_pass_t));
+		cblk->passes = jas_alloc2(cblk->numpasses, sizeof(jpc_enc_pass_t));
 		assert(cblk->passes);
 	} else {
 		cblk->passes = 0;
 	}
-	endpasses = &cblk->passes[cblk->numpasses];
+	endpasses = (cblk->passes) ? &cblk->passes[cblk->numpasses] : 0;
 	for (pass = cblk->passes; pass != endpasses; ++pass) {
 		pass->start = 0;
 		pass->end = 0;
@@ -352,7 +352,7 @@ dump_passes(cblk->passes, cblk->numpasses, cblk);
 #endif
 
 	n = 0;
-	endpasses = &cblk->passes[cblk->numpasses];
+	endpasses = (cblk->passes) ? &cblk->passes[cblk->numpasses] : 0;
 	for (pass = cblk->passes; pass != endpasses; ++pass) {
 		if (pass->start < n) {
 			pass->start = n;
