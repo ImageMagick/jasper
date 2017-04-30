@@ -74,12 +74,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 /* We need the prototype for memset. */
 #include <string.h>
 
 #include "jasper/jas_malloc.h"
+#include "jasper/jas_types.h"
 
 /******************************************************************************\
 * Code.

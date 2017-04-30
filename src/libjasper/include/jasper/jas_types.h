@@ -95,7 +95,6 @@
 /* Note: The immediately following header files should eventually be removed. */
 #include <stdlib.h>
 #include <stddef.h>
-#include <stdbool.h>
 #include <stdint.h>
 
 #if defined(HAVE_SYS_TYPES_H)
@@ -120,6 +119,14 @@
 #endif
 #if !defined(ulonglong)
 #define ulonglong unsigned long long
+#endif
+
+#if defined(_MSC_VER) && (_MSC_VER < 1800)
+#define bool  int
+#define false 0
+#define true  1
+#else
+#include <stdbool.h>
 #endif
 
 /* The below macro is intended to be used for type casts.  By using this
