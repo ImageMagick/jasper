@@ -69,6 +69,7 @@
 #include "jasper/jas_stream.h"
 #include "jasper/jas_image.h"
 #include "jasper/jas_string.h"
+#include "jasper/jas_debug.h"
 
 #include "jpg_cod.h"
 
@@ -86,7 +87,7 @@
 
 /* Load an image from a stream in the JPG format. */
 
-jas_image_t *jpg_decode(jas_stream_t *in, char *optstr)
+jas_image_t *jpg_decode(jas_stream_t *in, const char *optstr)
 {
 	jas_eprintf("error: JPEG decoder not available\n");
 	jas_eprintf("The IJG JPEG library is required for JPEG decoding support.\n");
@@ -100,7 +101,7 @@ jas_image_t *jpg_decode(jas_stream_t *in, char *optstr)
 
 /* Save an image to a stream in the the JPG format. */
 
-int jpg_encode(jas_image_t *image, jas_stream_t *out, char *optstr)
+int jpg_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 {
 	jas_eprintf("error: JPEG encoder not available\n");
 	jas_eprintf("The IJG JPEG library is required for JPEG encoding support.\n");

@@ -65,16 +65,17 @@
  * $Id$
  */
 
-#include <jasper/jas_config.h>
 #include <math.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <jasper/jas_cm.h>
-#include <jasper/jas_icc.h>
-#include <jasper/jas_init.h>
-#include <jasper/jas_stream.h>
-#include <jasper/jas_malloc.h>
-#include <jasper/jas_math.h>
+#include "jasper/jas_config.h"
+#include "jasper/jas_cm.h"
+#include "jasper/jas_icc.h"
+#include "jasper/jas_init.h"
+#include "jasper/jas_stream.h"
+#include "jasper/jas_malloc.h"
+#include "jasper/jas_math.h"
+#include "jasper/jas_debug.h"
 
 static jas_cmprof_t *jas_cmprof_create(void);
 static void jas_cmshapmatlut_cleanup(jas_cmshapmatlut_t *);
@@ -141,7 +142,6 @@ static jas_cmprof_t *jas_cmprof_createsycc(void);
 * Color profile class.
 \******************************************************************************/
 
-JAS_EXPORT
 jas_cmprof_t *jas_cmprof_createfromclrspc(int clrspc)
 {
 	jas_iccprof_t *iccprof;

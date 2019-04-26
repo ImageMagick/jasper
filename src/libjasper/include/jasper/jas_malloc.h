@@ -74,6 +74,7 @@
 * Includes.
 \******************************************************************************/
 
+/* The configuration header file should be included first. */
 #include <jasper/jas_config.h>
 
 #include <stdlib.h>
@@ -84,45 +85,35 @@ extern "C" {
 #endif
 
 /******************************************************************************\
-* Hack follows...
-\******************************************************************************/
-
-#if defined(DEBUG_MEMALLOC)
-/* This is somewhat of a hack, but it's a useful hack. :-) */
-/* Use my own custom memory allocator for debugging. */
-#include "../../../../local/src/memalloc.h"
-#define jas_malloc	MEMALLOC
-#define	jas_free	MEMFREE
-#define	jas_realloc	MEMREALLOC
-#define	jas_calloc	MEMCALLOC
-#endif
-
-/******************************************************************************\
 * Functions.
 \******************************************************************************/
 
-#if !defined(DEBUG_MEMALLOC)
-
 /* Allocate memory. */
-void *jas_malloc(size_t size);
+JAS_DLLEXPORT void *jas_malloc(size_t size);
 
 /* Free memory. */
-void jas_free(void *ptr);
+JAS_DLLEXPORT void jas_free(void *ptr);
 
 /* Resize a block of allocated memory. */
-void *jas_realloc(void *ptr, size_t size);
+JAS_DLLEXPORT void *jas_realloc(void *ptr, size_t size);
 
 /* Allocate a block of memory and initialize the contents to zero. */
-void *jas_calloc(size_t num_elements, size_t element_size);
+JAS_DLLEXPORT void *jas_calloc(size_t num_elements, size_t element_size);
 
 /* Allocate array (with overflow checking) . */
-void *jas_alloc2(size_t num_elements, size_t element_size);
+JAS_DLLEXPORT void *jas_alloc2(size_t num_elements, size_t element_size);
 
 /* Allocate array of arrays (with overflow checking) . */
-void *jas_alloc3(size_t num_arrays, size_t array_size, size_t element_size);
+JAS_DLLEXPORT void *jas_alloc3(size_t num_arrays, size_t array_size, size_t element_size);
 
 /* Resize a block of allocated memory (with overflow checking) . */
-void *jas_realloc2(void *ptr, size_t num_elements, size_t element_size);
+JAS_DLLEXPORT void *jas_realloc2(void *ptr, size_t num_elements, size_t element_size);
+
+#if defined(JAS_DEFAULT_MAX_MEM_USAGE)
+
+JAS_DLLEXPORT void jas_set_max_mem_usage(size_t max_mem);
+
+JAS_DLLEXPORT size_t jas_get_mem_usage();
 
 #endif
 
