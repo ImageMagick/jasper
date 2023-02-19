@@ -59,21 +59,36 @@
  * __END_OF_JASPER_LICENSE__
  */
 
+/*!
+ * @file jas_tmr.h
+ * @brief Timer Code
+ */
+
 #ifndef JAS_TMR_H
 #define JAS_TMR_H
 
 /* The configuration header file should be included first. */
 #include <jasper/jas_config.h>
 
-#include<time.h>
 #if defined(JAS_HAVE_SYS_TIME_H)
 #include <sys/time.h>
+#else
+#include <time.h>
 #endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/*!
+ * @addtogroup module_timers
+ * @{
+ */
+
+/*!
+@struct jas_tmr_t
+@brief Timer type.
+*/
 #if defined(JAS_HAVE_GETTIMEOFDAY)
 
 typedef struct {
@@ -94,9 +109,27 @@ typedef int jas_tmr_t;
 
 #endif
 
-JAS_DLLEXPORT void jas_tmr_start(jas_tmr_t *tmr);
-JAS_DLLEXPORT void jas_tmr_stop(jas_tmr_t *tmr);
-JAS_DLLEXPORT double jas_tmr_get(jas_tmr_t *tmr);
+/*!
+@brief Start a timer.
+*/
+JAS_EXPORT
+void jas_tmr_start(jas_tmr_t *tmr);
+
+/*!
+@brief Stop a timer.
+*/
+JAS_EXPORT
+void jas_tmr_stop(jas_tmr_t *tmr);
+
+/*!
+@brief Get the elapsed time for a timer.
+*/
+JAS_EXPORT
+double jas_tmr_get(jas_tmr_t *tmr);
+
+/*!
+ * @}
+ */
 
 #ifdef __cplusplus
 }

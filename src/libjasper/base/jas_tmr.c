@@ -69,14 +69,11 @@
 * Includes.
 \******************************************************************************/
 
-/* The configuration header file should be included first. */
-#include "jasper/jas_config.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#define JAS_FOR_INTERNAL_USE_ONLY
 
 #include "jasper/jas_tmr.h"
+
+#include <stdlib.h>
 
 /******************************************************************************\
 * Code.
@@ -149,4 +146,3 @@ double jas_tmr_get(jas_tmr_t *tmr)
 }
 
 #endif
-

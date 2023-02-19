@@ -71,22 +71,21 @@
 * Includes.
 \******************************************************************************/
 
-#include <assert.h>
-#include <stdlib.h>
+#include "jp2_cod.h"
 
-#include "jasper/jas_stream.h"
 #include "jasper/jas_malloc.h"
 #include "jasper/jas_debug.h"
+#include "jasper/jas_types.h"
 
-#include "jp2_cod.h"
+#include <assert.h>
+#include <string.h>
+#include <limits.h>
 
 /******************************************************************************\
 * Function prototypes.
 \******************************************************************************/
 
-#define	ONES(n)	((1 << (n)) - 1)
-
-jp2_boxinfo_t *jp2_boxinfolookup(int type);
+static const jp2_boxinfo_t *jp2_boxinfolookup(int type);
 
 static int jp2_getuint8(jas_stream_t *in, uint_fast8_t *val);
 static int jp2_getuint16(jas_stream_t *in, uint_fast16_t *val);
@@ -99,98 +98,104 @@ static int jp2_putuint64(jas_stream_t *out, uint_fast64_t val);
 
 static int jp2_getint(jas_stream_t *in, int s, int n, int_fast32_t *val);
 
-jp2_box_t *jp2_box_get(jas_stream_t *in);
-void jp2_box_dump(jp2_box_t *box, FILE *out);
+static void jp2_box_dump(const jp2_box_t *box);
 
 static int jp2_jp_getdata(jp2_box_t *box, jas_stream_t *in);
-static int jp2_jp_putdata(jp2_box_t *box, jas_stream_t *out);
+static int jp2_jp_putdata(const jp2_box_t *box, jas_stream_t *out);
 static int jp2_ftyp_getdata(jp2_box_t *box, jas_stream_t *in);
-static int jp2_ftyp_putdata(jp2_box_t *box, jas_stream_t *out);
+static int jp2_ftyp_putdata(const jp2_box_t *box, jas_stream_t *out);
 static int jp2_ihdr_getdata(jp2_box_t *box, jas_stream_t *in);
-static int jp2_ihdr_putdata(jp2_box_t *box, jas_stream_t *out);
+static int jp2_ihdr_putdata(const jp2_box_t *box, jas_stream_t *out);
 static void jp2_bpcc_destroy(jp2_box_t *box);
 static int jp2_bpcc_getdata(jp2_box_t *box, jas_stream_t *in);
-static int jp2_bpcc_putdata(jp2_box_t *box, jas_stream_t *out);
+static int jp2_bpcc_putdata(const jp2_box_t *box, jas_stream_t *out);
 static int jp2_colr_getdata(jp2_box_t *box, jas_stream_t *in);
-static int jp2_colr_putdata(jp2_box_t *box, jas_stream_t *out);
-static void jp2_colr_dumpdata(jp2_box_t *box, FILE *out);
+static int jp2_colr_putdata(const jp2_box_t *box, jas_stream_t *out);
+static void jp2_colr_dumpdata(const jp2_box_t *box);
 static void jp2_colr_destroy(jp2_box_t *box);
 static void jp2_cdef_destroy(jp2_box_t *box);
 static int jp2_cdef_getdata(jp2_box_t *box, jas_stream_t *in);
-static int jp2_cdef_putdata(jp2_box_t *box, jas_stream_t *out);
-static void jp2_cdef_dumpdata(jp2_box_t *box, FILE *out);
+static int jp2_cdef_putdata(const jp2_box_t *box, jas_stream_t *out);
+static void jp2_cdef_dumpdata(const jp2_box_t *box);
 static void jp2_cmap_destroy(jp2_box_t *box);
 static int jp2_cmap_getdata(jp2_box_t *box, jas_stream_t *in);
-static int jp2_cmap_putdata(jp2_box_t *box, jas_stream_t *out);
-static void jp2_cmap_dumpdata(jp2_box_t *box, FILE *out);
+static int jp2_cmap_putdata(const jp2_box_t *box, jas_stream_t *out);
+static void jp2_cmap_dumpdata(const jp2_box_t *box);
 static void jp2_pclr_destroy(jp2_box_t *box);
 static int jp2_pclr_getdata(jp2_box_t *box, jas_stream_t *in);
-static int jp2_pclr_putdata(jp2_box_t *box, jas_stream_t *out);
-static void jp2_pclr_dumpdata(jp2_box_t *box, FILE *out);
+static int jp2_pclr_putdata(const jp2_box_t *box, jas_stream_t *out);
+static void jp2_pclr_dumpdata(const jp2_box_t *box);
+
+/******************************************************************************\
+\******************************************************************************/
+
+static inline uint_fast32_t ones(int n)
+{
+	assert(n >= 0);
+	return (JAS_CAST(uint_fast32_t, 1) << n) - 1;
+}
 
 /******************************************************************************\
 * Local data.
 \******************************************************************************/
 
-jp2_boxinfo_t jp2_boxinfos[] = {
-	{JP2_BOX_JP, "JP", 0,
+static const jp2_boxinfo_t jp2_boxinfos[] = {
+	{JP2_BOX_JP, 0, "JP",
 	  {0, 0, jp2_jp_getdata, jp2_jp_putdata, 0}},
-	{JP2_BOX_FTYP, "FTYP", 0,
+	{JP2_BOX_FTYP, 0, "FTYP",
 	  {0, 0, jp2_ftyp_getdata, jp2_ftyp_putdata, 0}},
-	{JP2_BOX_JP2H, "JP2H", JP2_BOX_SUPER,
+	{JP2_BOX_JP2H, JP2_BOX_SUPER, "JP2H",
 	  {0, 0, 0, 0, 0}},
-	{JP2_BOX_IHDR, "IHDR", 0,
+	{JP2_BOX_IHDR, 0, "IHDR",
 	  {0, 0, jp2_ihdr_getdata, jp2_ihdr_putdata, 0}},
-	{JP2_BOX_BPCC, "BPCC", 0,
+	{JP2_BOX_BPCC, 0, "BPCC",
 	  {0, jp2_bpcc_destroy, jp2_bpcc_getdata, jp2_bpcc_putdata, 0}},
-	{JP2_BOX_COLR, "COLR", 0,
+	{JP2_BOX_COLR, 0, "COLR",
 	  {0, jp2_colr_destroy, jp2_colr_getdata, jp2_colr_putdata, jp2_colr_dumpdata}},
-	{JP2_BOX_PCLR, "PCLR", 0,
+	{JP2_BOX_PCLR, 0, "PCLR",
 	  {0, jp2_pclr_destroy, jp2_pclr_getdata, jp2_pclr_putdata, jp2_pclr_dumpdata}},
-	{JP2_BOX_CMAP, "CMAP", 0,
+	{JP2_BOX_CMAP, 0, "CMAP",
 	  {0, jp2_cmap_destroy, jp2_cmap_getdata, jp2_cmap_putdata, jp2_cmap_dumpdata}},
-	{JP2_BOX_CDEF, "CDEF", 0,
+	{JP2_BOX_CDEF, 0, "CDEF",
 	  {0, jp2_cdef_destroy, jp2_cdef_getdata, jp2_cdef_putdata, jp2_cdef_dumpdata}},
-	{JP2_BOX_RES, "RES", JP2_BOX_SUPER,
+	{JP2_BOX_RES, JP2_BOX_SUPER, "RES",
 	  {0, 0, 0, 0, 0}},
-	{JP2_BOX_RESC, "RESC", 0,
+	{JP2_BOX_RESC, 0, "RESC",
 	  {0, 0, 0, 0, 0}},
-	{JP2_BOX_RESD, "RESD", 0,
+	{JP2_BOX_RESD, 0, "RESD",
 	  {0, 0, 0, 0, 0}},
-	{JP2_BOX_JP2C, "JP2C", JP2_BOX_NODATA,
+	{JP2_BOX_JP2C, JP2_BOX_NODATA, "JP2C",
 	  {0, 0, 0, 0, 0}},
-	{JP2_BOX_JP2I, "JP2I", 0,
+	{JP2_BOX_JP2I, 0, "JP2I",
 	  {0, 0, 0, 0, 0}},
-	{JP2_BOX_XML, "XML", 0,
+	{JP2_BOX_XML, 0, "XML",
 	  {0, 0, 0, 0, 0}},
-	{JP2_BOX_UUID, "UUID", 0,
+	{JP2_BOX_UUID, 0, "UUID",
 	  {0, 0, 0, 0, 0}},
-	{JP2_BOX_UINF, "UINF", JP2_BOX_SUPER,
+	{JP2_BOX_UINF, JP2_BOX_SUPER, "UINF",
 	  {0, 0, 0, 0, 0}},
-	{JP2_BOX_ULST, "ULST", 0,
+	{JP2_BOX_ULST, 0, "ULST",
 	  {0, 0, 0, 0, 0}},
-	{JP2_BOX_URL, "URL", 0,
+	{JP2_BOX_URL, 0, "URL",
 	  {0, 0, 0, 0, 0}},
 	{0, 0, 0, {0, 0, 0, 0, 0}},
 };
 
-jp2_boxinfo_t jp2_boxinfo_unk = {
-	0, "Unknown", 0, {0, 0, 0, 0, 0}
+static const jp2_boxinfo_t jp2_boxinfo_unk = {
+	0, 0, "Unknown", {0, 0, 0, 0, 0}
 };
 
 /******************************************************************************\
 * Box constructor.
 \******************************************************************************/
 
-jp2_box_t *jp2_box_create0()
+static jp2_box_t *jp2_box_create0(void)
 {
 	jp2_box_t *box;
 	if (!(box = jas_malloc(sizeof(jp2_box_t)))) {
 		return 0;
 	}
 	memset(box, 0, sizeof(jp2_box_t));
-	box->type = 0;
-	box->len = 0;
 	// Mark the box data as never having been constructed
 	// so that we will not errantly attempt to destroy it later.
 	box->ops = &jp2_boxinfo_unk.ops;
@@ -199,16 +204,19 @@ jp2_box_t *jp2_box_create0()
 
 jp2_box_t *jp2_box_create(int type)
 {
+	const jp2_boxinfo_t *boxinfo = jp2_boxinfolookup(type);
+	assert(boxinfo != NULL);
+	if (boxinfo == &jp2_boxinfo_unk) {
+		// on error, jp2_boxinfolookup() returns &jp2_boxinfo_unk
+		return NULL;
+	}
+
 	jp2_box_t *box;
-	jp2_boxinfo_t *boxinfo;
 	if (!(box = jp2_box_create0())) {
 		return 0;
 	}
 	box->type = type;
 	box->len = 0;
-	if (!(boxinfo = jp2_boxinfolookup(type))) {
-		return 0;
-	}
 	box->info = boxinfo;
 	box->ops = &boxinfo->ops;
 	return box;
@@ -251,7 +259,7 @@ static void jp2_cdef_destroy(jp2_box_t *box)
 jp2_box_t *jp2_box_get(jas_stream_t *in)
 {
 	jp2_box_t *box;
-	jp2_boxinfo_t *boxinfo;
+	const jp2_boxinfo_t *boxinfo;
 	jas_stream_t *tmpstream;
 	uint_fast32_t len;
 	uint_fast64_t extlen;
@@ -269,37 +277,47 @@ jp2_box_t *jp2_box_get(jas_stream_t *in)
 	boxinfo = jp2_boxinfolookup(box->type);
 	box->info = boxinfo;
 	box->len = len;
-	JAS_DBGLOG(10, (
+	JAS_LOGDEBUGF(10,
 	  "preliminary processing of JP2 box: "
 	  "type=%c%s%c (0x%08x); length=%"PRIuFAST32"\n",
 	  '"', boxinfo->name, '"', box->type, box->len
-	  ));
+	  );
+	size_t hdrlen;
 	if (box->len == 1) {
-		JAS_DBGLOG(10, ("big length\n"));
+		JAS_LOGDEBUGF(10, "big length\n");
 		if (jp2_getuint64(in, &extlen)) {
 			goto error;
 		}
 		if (extlen > 0xffffffffUL) {
-			jas_eprintf("warning: cannot handle large 64-bit box length\n");
-			extlen = 0xffffffffUL;
+			jas_logerrorf("cannot handle large 64-bit box length\n");
+			goto error;
 		}
 		box->len = extlen;
-		box->datalen = extlen - JP2_BOX_HDRLEN(true);
+		hdrlen = JP2_BOX_HDRLEN(true);
 	} else {
-		box->datalen = box->len - JP2_BOX_HDRLEN(false);
+		hdrlen = JP2_BOX_HDRLEN(false);
 	}
 	if (box->len != 0 && box->len < 8) {
+		goto error;
+	}
+	if (box->len > SSIZE_MAX) {
+		/* This limit is the largest value which can be passed to
+		  jas_stream_copy() without overflowing. */
 		goto error;
 	}
 
 	dataflag = !(box->info->flags & (JP2_BOX_SUPER | JP2_BOX_NODATA));
 
 	if (dataflag) {
+		if (box->len < hdrlen)
+			goto error;
+		box->datalen = box->len - hdrlen;
+
 		if (!(tmpstream = jas_stream_memopen(0, 0))) {
 			goto error;
 		}
 		if (jas_stream_copy(tmpstream, in, box->datalen)) {
-			jas_eprintf("cannot copy box data\n");
+			jas_logerrorf("cannot copy box data\n");
 			goto error;
 		}
 		jas_stream_rewind(tmpstream);
@@ -310,15 +328,15 @@ jp2_box_t *jp2_box_get(jas_stream_t *in)
 
 		if (box->ops->getdata) {
 			if ((*box->ops->getdata)(box, tmpstream)) {
-				jas_eprintf("cannot parse box data\n");
+				jas_logerrorf("cannot parse box data\n");
 				goto error;
 			}
 		}
 		jas_stream_close(tmpstream);
 	}
 
-	if (jas_getdbglevel() >= 1) {
-		jp2_box_dump(box, stderr);
+	if (jas_get_debug_level() >= 1) {
+		jp2_box_dump(box);
 	}
 
 	return box;
@@ -333,17 +351,16 @@ error:
 	return 0;
 }
 
-void jp2_box_dump(jp2_box_t *box, FILE *out)
+static void jp2_box_dump(const jp2_box_t *box)
 {
-	jp2_boxinfo_t *boxinfo;
-	boxinfo = jp2_boxinfolookup(box->type);
+	const jp2_boxinfo_t *boxinfo = box->info;
 	assert(boxinfo);
 
-	fprintf(out, "JP2 box: ");
-	fprintf(out, "type=%c%s%c (0x%08"PRIxFAST32"); length=%"PRIuFAST32"\n", '"',
+	jas_logprintf(
+	  "JP2 box: type=%c%s%c (0x%08"PRIxFAST32"); length=%"PRIuFAST32"\n", '"',
 	  boxinfo->name, '"', box->type, box->len);
 	if (box->ops->dumpdata) {
-		(*box->ops->dumpdata)(box, out);
+		(*box->ops->dumpdata)(box);
 	}
 }
 
@@ -358,6 +375,9 @@ static int jp2_jp_getdata(jp2_box_t *box, jas_stream_t *in)
 
 static int jp2_ftyp_getdata(jp2_box_t *box, jas_stream_t *in)
 {
+	if (box->datalen < 8)
+		return -1;
+
 	jp2_ftyp_t *ftyp = &box->data.ftyp;
 	unsigned int i;
 	if (jp2_getuint32(in, &ftyp->majver) || jp2_getuint32(in, &ftyp->minver)) {
@@ -389,6 +409,12 @@ static int jp2_ihdr_getdata(jp2_box_t *box, jas_stream_t *in)
 
 static int jp2_bpcc_getdata(jp2_box_t *box, jas_stream_t *in)
 {
+	if (box->datalen > 0xffff)
+		/* excessive number of components - this is a
+		   pessimistic limit, because in jp2_ihdr_getdata(),
+		   it's a 16 bit integer */
+		return -1;
+
 	jp2_bpcc_t *bpcc = &box->data.bpcc;
 	unsigned int i;
 	bpcc->bpcs = 0;
@@ -404,22 +430,25 @@ static int jp2_bpcc_getdata(jp2_box_t *box, jas_stream_t *in)
 	return 0;
 }
 
-static void jp2_colr_dumpdata(jp2_box_t *box, FILE *out)
+static void jp2_colr_dumpdata(const jp2_box_t *box)
 {
-	jp2_colr_t *colr = &box->data.colr;
-	fprintf(out, "method=%d; pri=%d; approx=%d\n", (int)colr->method, (int)colr->pri, (int)colr->approx);
+	const jp2_colr_t *colr = &box->data.colr;
+	jas_logprintf("method=%d; pri=%d; approx=%d\n", (int)colr->method, (int)colr->pri, (int)colr->approx);
 	switch (colr->method) {
 	case JP2_COLR_ENUM:
-		fprintf(out, "csid=%d\n", (int)colr->csid);
+		jas_logprintf("csid=%d\n", (int)colr->csid);
 		break;
 	case JP2_COLR_ICC:
-		jas_memdump(out, colr->iccp, colr->iccplen);
+		jas_logmemdump(colr->iccp, colr->iccplen);
 		break;
 	}
 }
 
 static int jp2_colr_getdata(jp2_box_t *box, jas_stream_t *in)
 {
+	if (box->datalen < 3)
+		return -1;
+
 	jp2_colr_t *colr = &box->data.colr;
 	colr->csid = 0;
 	colr->iccp = 0;
@@ -427,16 +456,33 @@ static int jp2_colr_getdata(jp2_box_t *box, jas_stream_t *in)
 
 	if (jp2_getuint8(in, &colr->method) || jp2_getuint8(in, &colr->pri) ||
 	  jp2_getuint8(in, &colr->approx)) {
+		jas_logerrorf("cannot get COLR box data\n");
 		return -1;
 	}
 	switch (colr->method) {
 	case JP2_COLR_ENUM:
 		if (jp2_getuint32(in, &colr->csid)) {
+			jas_logerrorf("cannot get CSID\n");
 			return -1;
 		}
 		break;
 	case JP2_COLR_ICC:
+		if (box->datalen <= 3) {
+			jas_logerrorf("empty ICC profile data\n");
+			return -1;
+		}
+		assert(box->datalen >= 3);
 		colr->iccplen = box->datalen - 3;
+#if 0
+		if (colr->iccplen > 1024 * 1024) {
+			/* refuse to read ICC profiles larger than 1
+			   MB (I have no idea how large ICC profiles
+			   can get, but I believe this limit might be
+			   very pessimistic and should be lowered
+			   further) */
+			return -1;
+		}
+#endif
 		if (!(colr->iccp = jas_alloc2(colr->iccplen, sizeof(uint_fast8_t)))) {
 			return -1;
 		}
@@ -448,12 +494,12 @@ static int jp2_colr_getdata(jp2_box_t *box, jas_stream_t *in)
 	return 0;
 }
 
-static void jp2_cdef_dumpdata(jp2_box_t *box, FILE *out)
+static void jp2_cdef_dumpdata(const jp2_box_t *box)
 {
-	jp2_cdef_t *cdef = &box->data.cdef;
+	const jp2_cdef_t *cdef = &box->data.cdef;
 	unsigned int i;
 	for (i = 0; i < cdef->numchans; ++i) {
-		fprintf(out,
+		jas_logprintf(
 		  "channo=%"PRIuFAST16"; type=%"PRIuFAST16"; assoc=%"PRIuFAST16"\n",
 		  cdef->ents[i].channo, cdef->ents[i].type, cdef->ents[i].assoc);
 	}
@@ -531,7 +577,7 @@ int jp2_box_put(jp2_box_t *box, jas_stream_t *out)
 	if (dataflag) {
 		if (jas_stream_copy(out, tmpstream, box->len -
 		  JP2_BOX_HDRLEN(false))) {
-			jas_eprintf("cannot copy box data\n");
+			jas_logerrorf("cannot copy box data\n");
 			goto error;
 		}
 		jas_stream_close(tmpstream);
@@ -547,18 +593,18 @@ error:
 	return -1;
 }
 
-static int jp2_jp_putdata(jp2_box_t *box, jas_stream_t *out)
+static int jp2_jp_putdata(const jp2_box_t *box, jas_stream_t *out)
 {
-	jp2_jp_t *jp = &box->data.jp;
+	const jp2_jp_t *jp = &box->data.jp;
 	if (jp2_putuint32(out, jp->magic)) {
 		return -1;
 	}
 	return 0;
 }
 
-static int jp2_ftyp_putdata(jp2_box_t *box, jas_stream_t *out)
+static int jp2_ftyp_putdata(const jp2_box_t *box, jas_stream_t *out)
 {
-	jp2_ftyp_t *ftyp = &box->data.ftyp;
+	const jp2_ftyp_t *ftyp = &box->data.ftyp;
 	unsigned int i;
 	if (jp2_putuint32(out, ftyp->majver) || jp2_putuint32(out, ftyp->minver)) {
 		return -1;
@@ -571,9 +617,9 @@ static int jp2_ftyp_putdata(jp2_box_t *box, jas_stream_t *out)
 	return 0;
 }
 
-static int jp2_ihdr_putdata(jp2_box_t *box, jas_stream_t *out)
+static int jp2_ihdr_putdata(const jp2_box_t *box, jas_stream_t *out)
 {
-	jp2_ihdr_t *ihdr = &box->data.ihdr;
+	const jp2_ihdr_t *ihdr = &box->data.ihdr;
 	if (jp2_putuint32(out, ihdr->height) || jp2_putuint32(out, ihdr->width) ||
 	  jp2_putuint16(out, ihdr->numcmpts) || jp2_putuint8(out, ihdr->bpc) ||
 	  jp2_putuint8(out, ihdr->comptype) || jp2_putuint8(out, ihdr->csunk) ||
@@ -583,9 +629,9 @@ static int jp2_ihdr_putdata(jp2_box_t *box, jas_stream_t *out)
 	return 0;
 }
 
-static int jp2_bpcc_putdata(jp2_box_t *box, jas_stream_t *out)
+static int jp2_bpcc_putdata(const jp2_box_t *box, jas_stream_t *out)
 {
-	jp2_bpcc_t *bpcc = &box->data.bpcc;
+	const jp2_bpcc_t *bpcc = &box->data.bpcc;
 	unsigned int i;
 	for (i = 0; i < bpcc->numcmpts; ++i) {
 		if (jp2_putuint8(out, bpcc->bpcs[i])) {
@@ -595,9 +641,9 @@ static int jp2_bpcc_putdata(jp2_box_t *box, jas_stream_t *out)
 	return 0;
 }
 
-static int jp2_colr_putdata(jp2_box_t *box, jas_stream_t *out)
+static int jp2_colr_putdata(const jp2_box_t *box, jas_stream_t *out)
 {
-	jp2_colr_t *colr = &box->data.colr;
+	const jp2_colr_t *colr = &box->data.colr;
 	if (jp2_putuint8(out, colr->method) || jp2_putuint8(out, colr->pri) ||
 	  jp2_putuint8(out, colr->approx)) {
 		return -1;
@@ -609,26 +655,24 @@ static int jp2_colr_putdata(jp2_box_t *box, jas_stream_t *out)
 		}
 		break;
 	case JP2_COLR_ICC:
-		if (jas_stream_write(out, colr->iccp,
-		  JAS_CAST(int, colr->iccplen)) != JAS_CAST(int, colr->iccplen))
+		if (jas_stream_write(out, colr->iccp, colr->iccplen) != colr->iccplen)
 			return -1;
 		break;
 	}
 	return 0;
 }
 
-static int jp2_cdef_putdata(jp2_box_t *box, jas_stream_t *out)
+static int jp2_cdef_putdata(const jp2_box_t *box, jas_stream_t *out)
 {
-	jp2_cdef_t *cdef = &box->data.cdef;
+	const jp2_cdef_t *cdef = &box->data.cdef;
 	unsigned int i;
-	jp2_cdefchan_t *ent;
 
 	if (jp2_putuint16(out, cdef->numchans)) {
 		return -1;
 	}
 
 	for (i = 0; i < cdef->numchans; ++i) {
-		ent = &cdef->ents[i];
+		const jp2_cdefchan_t *ent = &cdef->ents[i];
 		if (jp2_putuint16(out, ent->channo) ||
 		  jp2_putuint16(out, ent->type) ||
 		  jp2_putuint16(out, ent->assoc)) {
@@ -656,45 +700,20 @@ static int jp2_getuint8(jas_stream_t *in, uint_fast8_t *val)
 
 static int jp2_getuint16(jas_stream_t *in, uint_fast16_t *val)
 {
-	uint_fast16_t v;
-	int c;
-	if ((c = jas_stream_getc(in)) == EOF) {
+	jas_uchar buffer[2];
+	if (jas_stream_read(in, buffer, sizeof(buffer)) != sizeof(buffer))
 		return -1;
-	}
-	v = c;
-	if ((c = jas_stream_getc(in)) == EOF) {
-		return -1;
-	}
-	v = (v << 8) | c;
-	if (val) {
-		*val = v;
-	}
+	*val = (uint_fast16_t)buffer[0] << 8 | (uint_fast16_t)buffer[1];
 	return 0;
 }
 
 static int jp2_getuint32(jas_stream_t *in, uint_fast32_t *val)
 {
-	uint_fast32_t v;
-	int c;
-	if ((c = jas_stream_getc(in)) == EOF) {
+	jas_uchar buffer[4];
+	if (jas_stream_read(in, buffer, sizeof(buffer)) != sizeof(buffer))
 		return -1;
-	}
-	v = c;
-	if ((c = jas_stream_getc(in)) == EOF) {
-		return -1;
-	}
-	v = (v << 8) | c;
-	if ((c = jas_stream_getc(in)) == EOF) {
-		return -1;
-	}
-	v = (v << 8) | c;
-	if ((c = jas_stream_getc(in)) == EOF) {
-		return -1;
-	}
-	v = (v << 8) | c;
-	if (val) {
-		*val = v;
-	}
+	*val = (uint_fast32_t)buffer[0] << 24 | (uint_fast32_t)buffer[1] << 16
+		| (uint_fast32_t)buffer[2] << 8 | (uint_fast32_t)buffer[3];
 	return 0;
 }
 
@@ -762,9 +781,9 @@ static int jp2_putuint64(jas_stream_t *out, uint_fast64_t val)
 * Miscellaneous code.
 \******************************************************************************/
 
-jp2_boxinfo_t *jp2_boxinfolookup(int type)
+static const jp2_boxinfo_t *jp2_boxinfolookup(int type)
 {
-	jp2_boxinfo_t *boxinfo;
+	const jp2_boxinfo_t *boxinfo;
 	for (boxinfo = jp2_boxinfos; boxinfo->name; ++boxinfo) {
 		if (boxinfo->type == type) {
 			return boxinfo;
@@ -772,10 +791,6 @@ jp2_boxinfo_t *jp2_boxinfolookup(int type)
 	}
 	return &jp2_boxinfo_unk;
 }
-
-
-
-
 
 static void jp2_cmap_destroy(jp2_box_t *box)
 {
@@ -793,6 +808,12 @@ static int jp2_cmap_getdata(jp2_box_t *box, jas_stream_t *in)
 	cmap->ents = 0;
 
 	cmap->numchans = (box->datalen) / 4;
+	if (cmap->numchans > 0xff)
+		/* excessive number of channels - this is a
+		   pessimistic limit, because in jp2_pclr_getdata(),
+		   it's a 8 bit integer */
+		return -1;
+
 	if (!(cmap->ents = jas_alloc2(cmap->numchans, sizeof(jp2_cmapent_t)))) {
 		return -1;
 	}
@@ -808,24 +829,21 @@ static int jp2_cmap_getdata(jp2_box_t *box, jas_stream_t *in)
 	return 0;
 }
 
-static int jp2_cmap_putdata(jp2_box_t *box, jas_stream_t *out)
+static int jp2_cmap_putdata(const jp2_box_t *box, jas_stream_t *out)
 {
-	/* Eliminate compiler warning about unused variables. */
-	box = 0;
-	out = 0;
-
+	JAS_UNUSED(box);
+	JAS_UNUSED(out);
 	return -1;
 }
 
-static void jp2_cmap_dumpdata(jp2_box_t *box, FILE *out)
+static void jp2_cmap_dumpdata(const jp2_box_t *box)
 {
-	jp2_cmap_t *cmap = &box->data.cmap;
+	const jp2_cmap_t *cmap = &box->data.cmap;
 	unsigned int i;
-	jp2_cmapent_t *ent;
-	fprintf(out, "numchans = %d\n", (int) cmap->numchans);
+	jas_logprintf("numchans = %d\n", (int) cmap->numchans);
 	for (i = 0; i < cmap->numchans; ++i) {
-		ent = &cmap->ents[i];
-		fprintf(out, "cmptno=%d; map=%d; pcol=%d\n",
+		const jp2_cmapent_t *ent = &cmap->ents[i];
+		jas_logprintf("cmptno=%d; map=%d; pcol=%d\n",
 		  (int) ent->cmptno, (int) ent->map, (int) ent->pcol);
 	}
 }
@@ -855,6 +873,12 @@ static int jp2_pclr_getdata(jp2_box_t *box, jas_stream_t *in)
 	  jp2_getuint8(in, &pclr->numchans)) {
 		return -1;
 	}
+
+	// verify in range data as per I.5.3.4 - Palette box
+	if (pclr->numchans < 1 || pclr->numlutents < 1 || pclr->numlutents > 1024) {
+		return -1;
+	}
+
 	lutsize = pclr->numlutents * pclr->numchans;
 	if (!(pclr->lutdata = jas_alloc2(lutsize, sizeof(int_fast32_t)))) {
 		return -1;
@@ -879,27 +903,26 @@ static int jp2_pclr_getdata(jp2_box_t *box, jas_stream_t *in)
 	return 0;
 }
 
-static int jp2_pclr_putdata(jp2_box_t *box, jas_stream_t *out)
+static int jp2_pclr_putdata(const jp2_box_t *box, jas_stream_t *out)
 {
 #if 0
-	jp2_pclr_t *pclr = &box->data.pclr;
+	const jp2_pclr_t *pclr = &box->data.pclr;
 #endif
-	/* Eliminate warning about unused variable. */
-	box = 0;
-	out = 0;
+	JAS_UNUSED(box);
+	JAS_UNUSED(out);
 	return -1;
 }
 
-static void jp2_pclr_dumpdata(jp2_box_t *box, FILE *out)
+static void jp2_pclr_dumpdata(const jp2_box_t *box)
 {
-	jp2_pclr_t *pclr = &box->data.pclr;
+	const jp2_pclr_t *pclr = &box->data.pclr;
 	unsigned int i;
 	int j;
-	fprintf(out, "numents=%d; numchans=%d\n", (int) pclr->numlutents,
+	jas_logprintf("numents=%d; numchans=%d\n", (int) pclr->numlutents,
 	  (int) pclr->numchans);
 	for (i = 0; i < pclr->numlutents; ++i) {
 		for (j = 0; j < pclr->numchans; ++j) {
-			fprintf(out, "LUT[%d][%d]=%"PRIiFAST32"\n", i, j,
+			jas_logprintf("LUT[%d][%d]=%"PRIiFAST32"\n", i, j,
 			  pclr->lutdata[i * pclr->numchans + j]);
 		}
 	}
@@ -914,6 +937,12 @@ static int jp2_getint(jas_stream_t *in, int s, int n, int_fast32_t *val)
 
 	m = (n + 7) / 8;
 
+	// Ensure that the integer to be read has a valid size.
+	if (n < 0 || n > 32) {
+		jas_logerrorf("jp2_getint: invalid integer size (%d bits)\n", n);
+		return -1;
+	}
+
 	v = 0;
 	for (i = 0; i < m; ++i) {
 		if ((c = jas_stream_getc(in)) == EOF) {
@@ -921,11 +950,11 @@ static int jp2_getint(jas_stream_t *in, int s, int n, int_fast32_t *val)
 		}
 		v = (v << 8) | c;
 	}
-	v &= ONES(n);
+	v &= ones(n);
 	if (s) {
 		int sb;
-		sb = v & (1 << (8 * m - 1));
-		*val = ((~v) + 1) & ONES(8 * m);
+		sb = v & (JAS_CAST(uint_fast32_t, 1) << (8 * m - 1));
+		*val = ((~v) + 1) & ones(8 * m);
 		if (sb) {
 			*val = -*val;
 		}
@@ -936,7 +965,7 @@ static int jp2_getint(jas_stream_t *in, int s, int n, int_fast32_t *val)
 	return 0;
 }
 
-jp2_cdefchan_t *jp2_cdef_lookup(jp2_cdef_t *cdef, int channo)
+const jp2_cdefchan_t *jp2_cdef_lookup(jp2_cdef_t *cdef, int channo)
 {
 	unsigned int i;
 	jp2_cdefchan_t *cdefent;

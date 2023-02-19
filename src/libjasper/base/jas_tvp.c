@@ -69,14 +69,14 @@
 * Includes.
 \******************************************************************************/
 
-#include <assert.h>
-#include <stdio.h>
-#include <ctype.h>
-#include <stdlib.h>
+#define JAS_FOR_INTERNAL_USE_ONLY
 
+#include "jasper/jas_tvp.h"
 #include "jasper/jas_malloc.h"
 #include "jasper/jas_string.h"
-#include "jasper/jas_tvp.h"
+
+#include <ctype.h>
+#include <string.h>
 
 /******************************************************************************\
 * Macros.
@@ -127,7 +127,7 @@ int jas_tvparser_next(jas_tvparser_t *tvp)
 
 	/* Skip any leading whitespace. */
 	p = tvp->pos;
-	while (*p != '\0' && isspace(*p)) {
+	while (*p != '\0' && isspace(JAS_CAST(unsigned char, *p))) {
 		++p;
 	}
 
@@ -139,7 +139,7 @@ int jas_tvparser_next(jas_tvparser_t *tvp)
 	}
 
 	/* Does the tag name begin with a valid character? */
-	if (!JAS_TVP_ISTAG(*p)) {
+	if (!JAS_TVP_ISTAG(JAS_CAST(unsigned char, *p))) {
 		return -1;
 	}
 
@@ -147,7 +147,7 @@ int jas_tvparser_next(jas_tvparser_t *tvp)
 	tag = p;
 
 	/* Find the end of the tag name. */
-	while (*p != '\0' && JAS_TVP_ISTAG(*p)) {
+	while (*p != '\0' && JAS_TVP_ISTAG(JAS_CAST(unsigned char, *p))) {
 		++p;
 	}
 
@@ -162,7 +162,7 @@ int jas_tvparser_next(jas_tvparser_t *tvp)
 
 	/* Is a value field not present? */
 	if (*p != '=') {
-		if (*p != '\0' && !isspace(*p)) {
+		if (*p != '\0' && !isspace(JAS_CAST(unsigned char, *p))) {
 			return -1;
 		}
 		*p++ = '\0';
@@ -175,7 +175,7 @@ int jas_tvparser_next(jas_tvparser_t *tvp)
 	*p++ = '\0';
 
 	val = p;
-	while (*p != '\0' && !isspace(*p)) {
+	while (*p != '\0' && !isspace(JAS_CAST(unsigned char, *p))) {
 		++p;
 	}
 
@@ -195,13 +195,13 @@ int jas_tvparser_next(jas_tvparser_t *tvp)
 \******************************************************************************/
 
 /* Get the current tag. */
-char *jas_tvparser_gettag(jas_tvparser_t *tvp)
+const char *jas_tvparser_gettag(const jas_tvparser_t *tvp)
 {
 	return tvp->tag;
 }
 
 /* Get the current value. */
-char *jas_tvparser_getval(jas_tvparser_t *tvp)
+const char *jas_tvparser_getval(const jas_tvparser_t *tvp)
 {
 	return tvp->val;
 }
@@ -211,9 +211,9 @@ char *jas_tvparser_getval(jas_tvparser_t *tvp)
 \******************************************************************************/
 
 /* Lookup a tag by name. */
-jas_taginfo_t *jas_taginfos_lookup(jas_taginfo_t *taginfos, const char *name)
+const jas_taginfo_t *jas_taginfos_lookup(const jas_taginfo_t *taginfos, const char *name)
 {
-	jas_taginfo_t *taginfo;
+	const jas_taginfo_t *taginfo;
 	taginfo = taginfos;
 	while (taginfo->id >= 0) {
 		if (!strcmp(taginfo->name, name)) {
@@ -227,9 +227,9 @@ jas_taginfo_t *jas_taginfos_lookup(jas_taginfo_t *taginfos, const char *name)
 /* This function is simply for convenience. */
 /* One can avoid testing for the special case of a null pointer, by
   using this function.   This function never returns a null pointer.  */
-jas_taginfo_t *jas_taginfo_nonull(jas_taginfo_t *taginfo)
+const jas_taginfo_t *jas_taginfo_nonull(const jas_taginfo_t *taginfo)
 {
-	static jas_taginfo_t invalidtaginfo = {
+	static const jas_taginfo_t invalidtaginfo = {
 		-1, 0
 	};
 	

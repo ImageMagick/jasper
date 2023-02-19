@@ -59,10 +59,20 @@
  * __END_OF_JASPER_LICENSE__
  */
 
-#include <jasper/jas_config.h>
+/******************************************************************************\
+* Includes.
+\******************************************************************************/
+
+//#define JAS_FOR_INTERNAL_USE_ONLY
+
+#include <jasper/jas_config.h> /* IWYU pragma: keep */
 #include <jasper/jas_types.h>
 
-jas_uchar jas_iccprofdata_srgb[] =
+/******************************************************************************\
+* Data.
+\******************************************************************************/
+
+const jas_uchar jas_iccprofdata_srgb[] =
 {
 	0x00, 0x00, 0x0c, 0x48, 0x4c, 0x69, 0x6e, 0x6f,
 	0x02, 0x10, 0x00, 0x00, 0x6d, 0x6e, 0x74, 0x72,
@@ -459,9 +469,9 @@ jas_uchar jas_iccprofdata_srgb[] =
 	0xfe, 0x4b, 0xfe, 0xdc, 0xff, 0x6d, 0xff, 0xff
 };
 
-int jas_iccprofdata_srgblen = sizeof(jas_iccprofdata_srgb);
+const unsigned jas_iccprofdata_srgblen = sizeof(jas_iccprofdata_srgb);
 
-jas_uchar jas_iccprofdata_sgray[] = {
+const jas_uchar jas_iccprofdata_sgray[] = {
 	0x00, 0x00, 0x01, 0x8a, 0x00, 0x00, 0x00, 0x00,
 	0x02, 0x20, 0x00, 0x00, 0x73, 0x63, 0x6e, 0x72,
 	0x47, 0x52, 0x41, 0x59, 0x58, 0x59, 0x5a, 0x20,
@@ -514,4 +524,4 @@ jas_uchar jas_iccprofdata_sgray[] = {
 	0x01, 0xcd
 };
 
-int jas_iccprofdata_sgraylen = sizeof(jas_iccprofdata_sgray);
+const unsigned jas_iccprofdata_sgraylen = sizeof(jas_iccprofdata_sgray);

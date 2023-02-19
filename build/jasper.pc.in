@@ -1,3 +1,4 @@
+prefix=@CMAKE_INSTALL_PREFIX@
 libdir=@CMAKE_INSTALL_FULL_LIBDIR@
 includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@
 
@@ -6,4 +7,6 @@ Description: Image Processing/Coding Tool Kit with JPEG-2000 Support
 Version: @JAS_VERSION@
 
 Libs: -L${libdir} -ljasper
-Cflags: -I${includedir}/jasper
+Requires.private: @JAS_PKGCONFIG_REQUIRES@
+Cflags: -I${includedir}/jasper -I${includedir}
+Cflags.private: -DLIBJASPER_STATIC_DEFINE

@@ -59,6 +59,11 @@
  * __END_OF_JASPER_LICENSE__
  */
 
+/*!
+ * @file jas_icc.h
+ * @brief ICC Profile
+ */
+
 #ifndef JAS_ICC_H
 #define	JAS_ICC_H
 
@@ -68,9 +73,16 @@
 #include <jasper/jas_types.h>
 #include <jasper/jas_stream.h>
 
+#include <stdio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/*!
+ * @addtogroup module_cm
+ * @{
+ */
 
 /* Profile file signature. */
 #define	JAS_ICC_MAGIC		0x61637370
@@ -297,18 +309,20 @@ struct jas_iccattrval_s;
 
 typedef struct {
 	void (*destroy)(struct jas_iccattrval_s *);
-	int (*copy)(struct jas_iccattrval_s *, struct jas_iccattrval_s *);
-	int (*input)(struct jas_iccattrval_s *, jas_stream_t *, int);
+	int (*copy)(struct jas_iccattrval_s *, const struct jas_iccattrval_s *);
+	int (*input)(struct jas_iccattrval_s *, jas_stream_t *, unsigned);
+//#ifdef JAS_ENABLE_ENCODER
 	int (*output)(struct jas_iccattrval_s *, jas_stream_t *);
-	int (*getsize)(struct jas_iccattrval_s *);
-	void (*dump)(struct jas_iccattrval_s *, FILE *);
+//#endif
+	unsigned (*getsize)(const struct jas_iccattrval_s *);
+	void (*dump)(const struct jas_iccattrval_s *, FILE *);
 } jas_iccattrvalops_t;
 
 /* Attribute value type (type and value information). */
 typedef struct jas_iccattrval_s {
-	int refcnt; /* reference count */
+	unsigned refcnt; /* reference count */
 	jas_iccsig_t type; /* type */
-	jas_iccattrvalops_t *ops; /* type-dependent operations */
+	const jas_iccattrvalops_t *ops; /* type-dependent operations */
 	union {
 		jas_iccxyz_t xyz;
 		jas_icccurv_t curv;
@@ -345,8 +359,8 @@ typedef struct {
 } jas_iccattr_t;
 
 typedef struct {
-	int numattrs;
-	int maxattrs;
+	unsigned numattrs;
+	unsigned maxattrs;
 	jas_iccattr_t *attrs;
 } jas_iccattrtab_t;
 
@@ -375,32 +389,145 @@ typedef struct {
 	jas_iccattrvalops_t ops;
 } jas_iccattrvalinfo_t;
 
-JAS_DLLEXPORT jas_iccprof_t *jas_iccprof_load(jas_stream_t *in);
-JAS_DLLEXPORT int jas_iccprof_save(jas_iccprof_t *prof, jas_stream_t *out);
-JAS_DLLEXPORT void jas_iccprof_destroy(jas_iccprof_t *prof);
-JAS_DLLEXPORT jas_iccattrval_t *jas_iccprof_getattr(jas_iccprof_t *prof,
+/*!
+@brief
+Read an ICC profile from a stream.
+*/
+JAS_EXPORT
+jas_iccprof_t *jas_iccprof_load(jas_stream_t *in);
+
+/*!
+@brief
+Write an ICC profile to a stream.
+*/
+JAS_EXPORT
+int jas_iccprof_save(jas_iccprof_t *prof, jas_stream_t *out);
+
+/*!
+@brief
+Destroy an ICC profile.
+*/
+JAS_EXPORT
+void jas_iccprof_destroy(jas_iccprof_t *prof);
+
+/*!
+@brief
+Get an attribute of an ICC profile.
+*/
+JAS_ATTRIBUTE_PURE
+JAS_EXPORT
+jas_iccattrval_t *jas_iccprof_getattr(const jas_iccprof_t *prof,
   jas_iccattrname_t name);
-JAS_DLLEXPORT int jas_iccprof_setattr(jas_iccprof_t *prof, jas_iccattrname_t name,
+
+/*!
+@brief
+Set an attribute of an ICC profile.
+*/
+JAS_EXPORT
+int jas_iccprof_setattr(jas_iccprof_t *prof, jas_iccattrname_t name,
   jas_iccattrval_t *val);
-JAS_DLLEXPORT void jas_iccprof_dump(jas_iccprof_t *prof, FILE *out);
-JAS_DLLEXPORT jas_iccprof_t *jas_iccprof_copy(jas_iccprof_t *prof);
-JAS_DLLEXPORT int jas_iccprof_gethdr(jas_iccprof_t *prof, jas_icchdr_t *hdr);
-JAS_DLLEXPORT int jas_iccprof_sethdr(jas_iccprof_t *prof, jas_icchdr_t *hdr);
 
-JAS_DLLEXPORT void jas_iccattrval_destroy(jas_iccattrval_t *attrval);
-JAS_DLLEXPORT void jas_iccattrval_dump(jas_iccattrval_t *attrval, FILE *out);
-JAS_DLLEXPORT int jas_iccattrval_allowmodify(jas_iccattrval_t **attrval);
-JAS_DLLEXPORT jas_iccattrval_t *jas_iccattrval_clone(jas_iccattrval_t *attrval);
-JAS_DLLEXPORT jas_iccattrval_t *jas_iccattrval_create(jas_iccuint32_t type);
+/*!
+@brief
+Dump an ICC profile to a stream in human-readable format
+for debugging purposes.
+*/
+JAS_EXPORT
+void jas_iccprof_dump(const jas_iccprof_t *prof, FILE *out);
 
-JAS_DLLEXPORT void jas_iccattrtab_dump(jas_iccattrtab_t *attrtab, FILE *out);
+/*!
+@brief
+Create a copy of an ICC profile.
+*/
+JAS_EXPORT
+jas_iccprof_t *jas_iccprof_copy(const jas_iccprof_t *prof);
 
-extern jas_uchar jas_iccprofdata_srgb[];
-extern int jas_iccprofdata_srgblen;
-extern jas_uchar jas_iccprofdata_sgray[];
-extern int jas_iccprofdata_sgraylen;
-JAS_DLLEXPORT jas_iccprof_t *jas_iccprof_createfrombuf(jas_uchar *buf, int len);
-JAS_DLLEXPORT jas_iccprof_t *jas_iccprof_createfromclrspc(int clrspc);
+/*!
+@brief
+Get the header for an ICC profile.
+*/
+JAS_EXPORT
+int jas_iccprof_gethdr(const jas_iccprof_t *prof, jas_icchdr_t *hdr);
+
+/*!
+@brief
+Set the header for an ICC profile.
+*/
+JAS_EXPORT
+int jas_iccprof_sethdr(jas_iccprof_t *prof, const jas_icchdr_t *hdr);
+
+/*!
+@brief
+Destroy an ICC profile attribute.
+*/
+JAS_EXPORT
+void jas_iccattrval_destroy(jas_iccattrval_t *attrval);
+
+/*!
+@brief
+*/
+JAS_EXPORT
+void jas_iccattrval_dump(const jas_iccattrval_t *attrval, FILE *out);
+
+/*!
+@brief
+
+TODO/FIXME
+*/
+JAS_EXPORT
+int jas_iccattrval_allowmodify(jas_iccattrval_t **attrval);
+
+/*!
+@brief
+Create a copy of an ICC profile attribute.
+*/
+JAS_EXPORT
+jas_iccattrval_t *jas_iccattrval_clone(jas_iccattrval_t *attrval);
+
+/*!
+@brief
+Create an ICC profile attribute.
+*/
+JAS_EXPORT
+jas_iccattrval_t *jas_iccattrval_create(jas_iccuint32_t type);
+
+/*!
+@brief
+Dump an ICC profile attribute to a stream in human-readable format
+for debugging purposes.
+*/
+JAS_EXPORT
+void jas_iccattrtab_dump(const jas_iccattrtab_t *attrtab, FILE *out);
+
+/*!
+@brief
+Create an ICC profile from a buffer in memory.
+*/
+JAS_EXPORT
+jas_iccprof_t *jas_iccprof_createfrombuf(const jas_uchar *buf, unsigned len);
+
+/*!
+@brief
+Create an ICC profile from a color space.
+*/
+JAS_EXPORT
+jas_iccprof_t *jas_iccprof_createfromclrspc(unsigned clrspc);
+
+JAS_EXPORT
+extern const jas_uchar jas_iccprofdata_srgb[];
+
+JAS_EXPORT
+extern const unsigned jas_iccprofdata_srgblen;
+
+JAS_EXPORT
+extern const jas_uchar jas_iccprofdata_sgray[];
+
+JAS_EXPORT
+extern const unsigned jas_iccprofdata_sgraylen;
+
+/*!
+ * @}
+ */
 
 #ifdef __cplusplus
 }

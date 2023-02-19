@@ -71,21 +71,19 @@
 * Includes.
 \******************************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-
-#include "jasper/jas_fix.h"
-#include "jasper/jas_malloc.h"
-#include "jasper/jas_math.h"
-#include "jasper/jas_debug.h"
-
-#include "jpc_flt.h"
 #include "jpc_t2enc.h"
 #include "jpc_t2cod.h"
 #include "jpc_tagtree.h"
 #include "jpc_enc.h"
 #include "jpc_math.h"
+
+#include "jasper/jas_malloc.h"
+#include "jasper/jas_math.h"
+#include "jasper/jas_debug.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
 
 /******************************************************************************\
 * Code.
@@ -139,7 +137,7 @@ int jpc_enc_encpkts(jpc_enc_t *enc, jas_stream_t *out)
 
 	tile = enc->curtile;
 
-	jpc_init_t2state(enc, 0);
+	jpc_init_t2state(enc, false);
 	pi = tile->pi;
 	jpc_pi_init(pi);
 
@@ -158,7 +156,7 @@ int jpc_enc_encpkts(jpc_enc_t *enc, jas_stream_t *out)
 	return 0;
 }
 
-int jpc_enc_encpkt(jpc_enc_t *enc, jas_stream_t *out, int compno, int lvlno, int prcno, int lyrno)
+int jpc_enc_encpkt(jpc_enc_t *enc, jas_stream_t *out, unsigned compno, unsigned lvlno, unsigned prcno, unsigned lyrno)
 {
 	jpc_enc_tcmpt_t *comp;
 	jpc_enc_rlvl_t *lvl;
@@ -173,24 +171,17 @@ int jpc_enc_encpkt(jpc_enc_t *enc, jas_stream_t *out, int compno, int lvlno, int
 	jpc_enc_pass_t *endpass;
 	jpc_enc_pass_t *endpasses;
 	int i;
-	int included;
 	int ret;
 	jpc_tagtreenode_t *leaf;
-	int n;
 	int t1;
 	int t2;
-	int adjust;
-	int maxadjust;
-	int datalen;
-	int numnewpasses;
-	int passcount;
 	jpc_enc_tile_t *tile;
 	jpc_enc_prc_t *prc;
 	jpc_enc_cp_t *cp;
 	jpc_ms_t *ms;
 
-	JAS_DBGLOG(10, ("encoding packet begin %d %d %d %d\n", compno, lvlno,
-	  prcno, lyrno));
+	JAS_LOGDEBUGF(10, "encoding packet begin %d %d %d %d\n", compno, lvlno,
+	  prcno, lyrno);
 
 	tile = enc->curtile;
 	cp = enc->cp;
@@ -207,14 +198,13 @@ int jpc_enc_encpkt(jpc_enc_t *enc, jas_stream_t *out, int compno, int lvlno, int
 	}
 
 	if (!(outb = jpc_bitstream_sopen(out, "w+"))) {
-		abort();
+		return -1;
 	}
 
 	if (jpc_bitstream_putbit(outb, 1) == EOF) {
-		return -1;
+		goto error_close;
 	}
-	//JAS_DBGLOG(10, ("\n"));
-	JAS_DBGLOG(10, ("present.\n"));
+	JAS_LOGDEBUGF(10, "present.\n");
 
 	comp = &tile->tcmpts[compno];
 	lvl = &comp->rlvls[lvlno];
@@ -235,7 +225,7 @@ int jpc_enc_encpkt(jpc_enc_t *enc, jas_stream_t *out, int compno, int lvlno, int
 				jpc_tagtree_setvalue(prc->nlibtree, leaf, cblk->numimsbs);
 			}
 			pass = cblk->curpass;
-			included = (pass && pass->lyrno == lyrno);
+			const bool included = (pass && pass->lyrno == lyrno);
 			if (included && (!cblk->numencpasses)) {
 				assert(pass->lyrno == lyrno);
 				leaf = jpc_tagtree_getleaf(prc->incltree,
@@ -247,20 +237,20 @@ int jpc_enc_encpkt(jpc_enc_t *enc, jas_stream_t *out, int compno, int lvlno, int
 		endcblks = &prc->cblks[prc->numcblks];
 		for (cblk = prc->cblks; cblk != endcblks; ++cblk) {
 			pass = cblk->curpass;
-			included = (pass && pass->lyrno == lyrno);
+			const bool included = (pass && pass->lyrno == lyrno);
 			if (!cblk->numencpasses) {
 				leaf = jpc_tagtree_getleaf(prc->incltree,
 				  cblk - prc->cblks);
 				if (jpc_tagtree_encode(prc->incltree, leaf, lyrno + 1, outb) <
 				  0) {
-					return -1;
+					goto error_close;
 				}
 			} else {
 				if (jpc_bitstream_putbit(outb, included) == EOF) {
-					return -1;
+					goto error_close;
 				}
 			}
-			JAS_DBGLOG(10, ("included=%d ", included));
+			JAS_LOGDEBUGF(10, "included=%d ", included);
 			if (!included) {
 				continue;
 			}
@@ -270,7 +260,7 @@ int jpc_enc_encpkt(jpc_enc_t *enc, jas_stream_t *out, int compno, int lvlno, int
 				for (;;) {
 					if ((ret = jpc_tagtree_encode(prc->nlibtree, leaf, i,
 					  outb)) < 0) {
-						return -1;
+						goto error_close;
 					}
 					if (ret) {
 						break;
@@ -286,22 +276,22 @@ int jpc_enc_encpkt(jpc_enc_t *enc, jas_stream_t *out, int compno, int lvlno, int
 			while (endpass != endpasses && endpass->lyrno == lyrno){
 				++endpass;
 			}
-			numnewpasses = endpass - startpass;
+			const unsigned numnewpasses = endpass - startpass;
 			if (jpc_putnumnewpasses(outb, numnewpasses)) {
-				return -1;
+				goto error_close;
 			}
-			JAS_DBGLOG(10, ("numnewpasses=%d ", numnewpasses));
+			JAS_LOGDEBUGF(10, "numnewpasses=%d ", numnewpasses);
 
 			lastpass = endpass - 1;
-			n = startpass->start;
-			passcount = 1;
-			maxadjust = 0;
+			unsigned n = startpass->start;
+			unsigned passcount = 1;
+			unsigned maxadjust = 0;
 			for (pass = startpass; pass != endpass; ++pass) {
 				if (pass->term || pass == lastpass) {
-					datalen = pass->end - n;
-					t1 = jpc_firstone(datalen) + 1;
+					unsigned datalen = pass->end - n;
+					t1 = jpc_int_firstone(datalen) + 1;
 					t2 = cblk->numlenbits + jpc_floorlog2(passcount);
-					adjust = JAS_MAX(t1 - t2, 0);
+					const unsigned adjust = JAS_MAX(t1 - t2, 0);
 					maxadjust = JAS_MAX(adjust, maxadjust);
 					n += datalen;
 					passcount = 1;
@@ -310,7 +300,7 @@ int jpc_enc_encpkt(jpc_enc_t *enc, jas_stream_t *out, int compno, int lvlno, int
 				}
 			}
 			if (jpc_putcommacode(outb, maxadjust)) {
-				return -1;
+				goto error_close;
 			}
 			cblk->numlenbits += maxadjust;
 
@@ -319,12 +309,12 @@ int jpc_enc_encpkt(jpc_enc_t *enc, jas_stream_t *out, int compno, int lvlno, int
 			passcount = 1;
 			for (pass = startpass; pass != endpass; ++pass) {
 				if (pass->term || pass == lastpass) {
-					datalen = pass->end - n;
-					assert(jpc_firstone(datalen) < cblk->numlenbits +
-					  jpc_floorlog2(passcount));
+					unsigned datalen = pass->end - n;
+					assert(jpc_int_firstone(datalen) < cblk->numlenbits +
+					  (int)jpc_floorlog2(passcount));
 					if (jpc_bitstream_putbits(outb, cblk->numlenbits +
 					  jpc_floorlog2(passcount), datalen) == EOF) {
-						return -1;
+						goto error_close;
 					}
 					n += datalen;
 					passcount = 1;
@@ -367,7 +357,7 @@ int jpc_enc_encpkt(jpc_enc_t *enc, jas_stream_t *out, int compno, int lvlno, int
 				continue;
 			}
 			if (pass->lyrno != lyrno) {
-				assert(pass->lyrno < 0 || pass->lyrno > lyrno);
+				assert(pass->lyrno > lyrno);
 				continue;
 			}
 
@@ -378,7 +368,7 @@ int jpc_enc_encpkt(jpc_enc_t *enc, jas_stream_t *out, int compno, int lvlno, int
 				++endpass;
 			}
 			lastpass = endpass - 1;
-			numnewpasses = endpass - startpass;
+			const unsigned numnewpasses = endpass - startpass;
 
 			jas_stream_seek(cblk->stream, startpass->start, SEEK_SET);
 			assert(jas_stream_tell(cblk->stream) == startpass->start);
@@ -392,9 +382,13 @@ int jpc_enc_encpkt(jpc_enc_t *enc, jas_stream_t *out, int compno, int lvlno, int
 		}
 	}
 
-	JAS_DBGLOG(10, ("encoding packet end\n"));
+	JAS_LOGDEBUGF(10, "encoding packet end\n");
 
 	return 0;
+
+error_close:
+	jpc_bitstream_close(outb);
+	return -1;
 }
 
 void jpc_save_t2state(jpc_enc_t *enc)
@@ -410,7 +404,7 @@ void jpc_save_t2state(jpc_enc_t *enc)
 	jpc_enc_cblk_t *cblk;
 	jpc_enc_cblk_t *endcblks;
 	jpc_enc_tile_t *tile;
-	int prcno;
+	unsigned prcno;
 	jpc_enc_prc_t *prc;
 
 	tile = enc->curtile;
@@ -458,7 +452,7 @@ void jpc_restore_t2state(jpc_enc_t *enc)
 	jpc_enc_cblk_t *cblk;
 	jpc_enc_cblk_t *endcblks;
 	jpc_enc_tile_t *tile;
-	int prcno;
+	unsigned prcno;
 	jpc_enc_prc_t *prc;
 
 	tile = enc->curtile;
@@ -493,7 +487,7 @@ void jpc_restore_t2state(jpc_enc_t *enc)
 	}
 }
 
-void jpc_init_t2state(jpc_enc_t *enc, int raflag)
+void jpc_init_t2state(jpc_enc_t *enc, bool raflag)
 {
 /* It is assumed that band->numbps and cblk->numbps precomputed */
 
@@ -509,7 +503,7 @@ void jpc_init_t2state(jpc_enc_t *enc, int raflag)
 	jpc_enc_pass_t *endpasses;
 	jpc_tagtreenode_t *leaf;
 	jpc_enc_tile_t *tile;
-	int prcno;
+	unsigned prcno;
 	jpc_enc_prc_t *prc;
 
 	tile = enc->curtile;
@@ -548,7 +542,6 @@ void jpc_init_t2state(jpc_enc_t *enc, int raflag)
 						if (raflag) {
 							endpasses = &cblk->passes[cblk->numpasses];
 							for (pass = cblk->passes; pass != endpasses; ++pass) {
-								pass->lyrno = -1;
 								pass->lyrno = 0;
 							}
 						}
@@ -563,14 +556,14 @@ void jpc_init_t2state(jpc_enc_t *enc, int raflag)
 jpc_pi_t *jpc_enc_pi_create(jpc_enc_cp_t *cp, jpc_enc_tile_t *tile)
 {
 	jpc_pi_t *pi;
-	int compno;
+	unsigned compno;
 	jpc_picomp_t *picomp;
 	jpc_pirlvl_t *pirlvl;
 	jpc_enc_tcmpt_t *tcomp;
-	int rlvlno;
+	unsigned rlvlno;
 	jpc_enc_rlvl_t *rlvl;
-	int prcno;
-	int *prclyrno;
+	unsigned prcno;
+	unsigned *prclyrno;
 
 	if (!(pi = jpc_pi_create0())) {
 		return 0;

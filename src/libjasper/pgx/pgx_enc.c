@@ -63,16 +63,12 @@
 * Includes.
 \******************************************************************************/
 
-#include <assert.h>
+#include "pgx_enc.h"
+#include "pgx_cod.h"
 
-#include "jasper/jas_tvp.h"
 #include "jasper/jas_stream.h"
 #include "jasper/jas_image.h"
-#include "jasper/jas_string.h"
 #include "jasper/jas_debug.h"
-
-#include "pgx_cod.h"
-#include "pgx_enc.h"
 
 /******************************************************************************\
 * Local functions.
@@ -82,7 +78,7 @@ static int pgx_puthdr(jas_stream_t *out, pgx_hdr_t *hdr);
 static int pgx_putdata(jas_stream_t *out, pgx_hdr_t *hdr, jas_image_t *image, int cmpt);
 static int pgx_putword(jas_stream_t *out, bool bigendian, int prec,
   uint_fast32_t val);
-static uint_fast32_t pgx_inttoword(int_fast32_t val, int prec, bool sgnd);
+static uint_fast32_t pgx_inttoword(jas_seqent_t val, int prec, bool sgnd);
 
 /******************************************************************************\
 * Code for save operation.
@@ -100,21 +96,19 @@ int pgx_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 	pgx_enc_t encbuf;
 	pgx_enc_t *enc = &encbuf;
 
-	/* Avoid compiler warnings about unused parameters. */
-	optstr = 0;
+	JAS_UNUSED(optstr);
 
 	switch (jas_clrspc_fam(jas_image_clrspc(image))) {
 	case JAS_CLRSPC_FAM_GRAY:
 		if ((enc->cmpt = jas_image_getcmptbytype(image,
 		  JAS_IMAGE_CT_COLOR(JAS_CLRSPC_CHANIND_GRAY_Y))) < 0) {
-			jas_eprintf("error: missing color component\n");
+			jas_logerrorf("error: missing color component\n");
 			return -1;
 		}
 		break;
 	default:
-		jas_eprintf("error: PGX format does not support color space\n");
+		jas_logerrorf("error: PGX format does not support color space\n");
 		return -1;
-		break;
 	}
 
 	width = jas_image_cmptwidth(image, enc->cmpt);
@@ -128,7 +122,7 @@ int pgx_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 	  PGX format. */
 	/* There must be exactly one component. */
 	if (jas_image_numcmpts(image) > 1 || prec > 16) {
-		jas_eprintf("The PGX format cannot be used to represent an image with this geometry.\n");
+		jas_logerrorf("The PGX format cannot be used to represent an image with this geometry.\n");
 		return -1;
 	}
 
@@ -139,7 +133,7 @@ int pgx_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 	hdr.width = width;
 	hdr.height = height;
 
-	if (jas_getdbglevel() >= 10) {
+	if (jas_get_debug_level() >= 10) {
 		pgx_dumphdr(stderr, &hdr);
 	}
 
@@ -225,6 +219,7 @@ static int pgx_putword(jas_stream_t *out, bool bigendian, int prec,
 static uint_fast32_t pgx_inttoword(jas_seqent_t v, int prec, bool sgnd)
 {
 	uint_fast32_t ret;
-	ret = ((sgnd && v < 0) ? ((1 << prec) + v) : v) & ((1 << prec) - 1);
+	ret = ((sgnd && v < 0) ? (JAS_POW2_X(jas_seqent_t, prec) + v) : v) &
+	  ((1 << prec) - 1);
 	return ret;
 }

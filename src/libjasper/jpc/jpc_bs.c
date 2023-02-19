@@ -71,15 +71,14 @@
 * Includes.
 \******************************************************************************/
 
-#include <assert.h>
-#include <stdlib.h>
-#include <stdarg.h>
+#include "jpc_bs.h"
 
 #include "jasper/jas_malloc.h"
 #include "jasper/jas_math.h"
 #include "jasper/jas_debug.h"
 
-#include "jpc_bs.h"
+#include <assert.h>
+#include <stdlib.h>
 
 /******************************************************************************\
 * Local function prototypes.
@@ -92,7 +91,7 @@ static jpc_bitstream_t *jpc_bitstream_alloc(void);
 \******************************************************************************/
 
 /* Open a bit stream from a stream. */
-jpc_bitstream_t *jpc_bitstream_sopen(jas_stream_t *stream, char *mode)
+jpc_bitstream_t *jpc_bitstream_sopen(jas_stream_t *stream, const char *mode)
 {
 	jpc_bitstream_t *bitstream;
 
@@ -170,9 +169,9 @@ static jpc_bitstream_t *jpc_bitstream_alloc()
 int jpc_bitstream_getbit_func(jpc_bitstream_t *bitstream)
 {
 	int ret;
-	JAS_DBGLOG(1000, ("jpc_bitstream_getbit_func(%p)\n", bitstream));
+	JAS_LOGDEBUGF(1000, "jpc_bitstream_getbit_func(%p)\n", bitstream);
 	ret = jpc_bitstream_getbit_macro(bitstream);
-	JAS_DBGLOG(1000, ("jpc_bitstream_getbit_func -> %d\n", ret));
+	JAS_LOGDEBUGF(1000, "jpc_bitstream_getbit_func -> %d\n", ret);
 	return ret;
 }
 
@@ -180,9 +179,9 @@ int jpc_bitstream_getbit_func(jpc_bitstream_t *bitstream)
 int jpc_bitstream_putbit_func(jpc_bitstream_t *bitstream, int b)
 {
 	int ret;
-	JAS_DBGLOG(1000, ("jpc_bitstream_putbit_func(%p, %d)\n", bitstream, b));
+	JAS_LOGDEBUGF(1000, "jpc_bitstream_putbit_func(%p, %d)\n", bitstream, b);
 	ret = jpc_bitstream_putbit_macro(bitstream, b);
-	JAS_DBGLOG(1000, ("jpc_bitstream_putbit_func() -> %d\n", ret));
+	JAS_LOGDEBUGF(1000, "jpc_bitstream_putbit_func() -> %d\n", ret);
 	return ret;
 }
 
@@ -275,7 +274,7 @@ int jpc_bitstream_fillbuf(jpc_bitstream_t *bitstream)
 
 /* Does the bit stream need to be aligned to a byte boundary (considering
   the effects of bit stuffing)? */
-int jpc_bitstream_needalign(jpc_bitstream_t *bitstream)
+int jpc_bitstream_needalign(const jpc_bitstream_t *bitstream)
 {
 	if (bitstream->openmode_ & JPC_BITSTREAM_READ) {
 		/* The bit stream is open for reading. */
@@ -304,7 +303,7 @@ int jpc_bitstream_needalign(jpc_bitstream_t *bitstream)
 }
 
 /* How many additional bytes would be output if we align the bit stream? */
-int jpc_bitstream_pending(jpc_bitstream_t *bitstream)
+int jpc_bitstream_pending(const jpc_bitstream_t *bitstream)
 {
 	if (bitstream->openmode_ & JPC_BITSTREAM_WRITE) {
 		/* The bit stream is being used for writing. */
@@ -338,7 +337,8 @@ int jpc_bitstream_align(jpc_bitstream_t *bitstream)
 	} else if (bitstream->openmode_ & JPC_BITSTREAM_WRITE) {
 		ret = jpc_bitstream_outalign(bitstream, 0);
 	} else {
-		abort();
+		assert(false);
+		JAS_UNREACHABLE();
 	}
 	return ret;
 }
@@ -365,6 +365,7 @@ int jpc_bitstream_inalign(jpc_bitstream_t *bitstream, int fillmask,
 	}
 	if (n > 0) {
 		if ((u = jpc_bitstream_getbits(bitstream, n)) < 0) {
+			JAS_LOGDEBUGF(1, "jpc_bitstream_inalign failed\n");
 			return -1;
 		}
 		m += n;
@@ -372,6 +373,7 @@ int jpc_bitstream_inalign(jpc_bitstream_t *bitstream, int fillmask,
 	}
 	if ((bitstream->buf_ & 0xff) == 0xff) {
 		if ((u = jpc_bitstream_getbits(bitstream, 7)) < 0) {
+			JAS_LOGDEBUGF(1, "jpc_bitstream_inalign failed\n");
 			return -1;
 		}
 		v = (v << 7) | u;
@@ -385,6 +387,7 @@ int jpc_bitstream_inalign(jpc_bitstream_t *bitstream, int fillmask,
 	}
 	if (((~(v ^ filldata)) & fillmask) != fillmask) {
 		/* The actual fill pattern does not match the expected one. */
+		JAS_LOGDEBUGF(1, "jpc_bitstream_inalign failed (mismatch)\n");
 		return 1;
 	}
 

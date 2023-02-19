@@ -59,8 +59,15 @@
  * __END_OF_JASPER_LICENSE__
  */
 
+/*!
+ * @file jasper.h
+ * @brief JasPer Main Header
+ */
+
 #ifndef JAS_JASPER_H
 #define JAS_JASPER_H
+
+// IWYU pragma: begin_exports
 
 /* The configuration header file should be included first. */
 #include <jasper/jas_config.h>
@@ -75,7 +82,6 @@
 #include <jasper/jas_debug.h>
 #include <jasper/jas_getopt.h>
 #include <jasper/jas_image.h>
-#include <jasper/jas_icc.h>
 #include <jasper/jas_math.h>
 #include <jasper/jas_malloc.h>
 #include <jasper/jas_seq.h>
@@ -83,6 +89,9 @@
 #include <jasper/jas_string.h>
 #include <jasper/jas_tmr.h>
 #include <jasper/jas_tvp.h>
+#include <jasper/jas_thread.h>
+#include <jasper/jas_init.h>
+#include <jasper/jas_log.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -91,5 +100,7 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+// IWYU pragma: end_exports
 
 #endif

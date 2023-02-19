@@ -71,15 +71,17 @@
 * Includes.
 \******************************************************************************/
 
-#include <assert.h>
-#include <stdlib.h>
+#include "ras_cod.h"
 
+#include "jasper/jas_init.h"
 #include "jasper/jas_stream.h"
 #include "jasper/jas_image.h"
 #include "jasper/jas_debug.h"
 #include "jasper/jas_tvp.h"
+#include "jasper/jas_math.h"
 
-#include "ras_cod.h"
+#include <assert.h>
+#include <stdlib.h>
 
 /******************************************************************************\
 * Local types.
@@ -112,7 +114,7 @@ static int ras_getcmap(jas_stream_t *in, ras_hdr_t *hdr, ras_cmap_t *cmap);
 * Option parsing.
 \******************************************************************************/
 
-static jas_taginfo_t ras_decopts[] = {
+static const jas_taginfo_t ras_decopts[] = {
 	// Not yet supported
 	// {OPT_ALLOWTRUNC, "allow_trunc"},
 	{OPT_MAXSIZE, "max_samples"},
@@ -123,7 +125,7 @@ static int ras_dec_parseopts(const char *optstr, ras_dec_importopts_t *opts)
 {
 	jas_tvparser_t *tvp;
 
-	opts->max_samples = JAS_DEC_DEFAULT_MAX_SAMPLES;
+	opts->max_samples = jas_get_dec_default_max_samples();
 	opts->allow_trunc = 0;
 
 	if (!(tvp = jas_tvparser_create(optstr ? optstr : ""))) {
@@ -140,9 +142,8 @@ static int ras_dec_parseopts(const char *optstr, ras_dec_importopts_t *opts)
 			opts->max_samples = strtoull(jas_tvparser_getval(tvp), 0, 10);
 			break;
 		default:
-			jas_eprintf("warning: ignoring invalid option %s\n",
+			jas_logwarnf("warning: ignoring invalid option %s\n",
 			  jas_tvparser_gettag(tvp));
-			break;
 		}
 	}
 
@@ -170,7 +171,7 @@ jas_image_t *ras_decode(jas_stream_t *in, const char *optstr)
 
 	image = 0;
 
-	JAS_DBGLOG(10, ("ras_decode(%p, %p, \"%s\"\n", in, optstr ? optstr : ""));
+	JAS_LOGDEBUGF(10, "ras_decode(%p, \"%s\")\n", in, (optstr ? optstr : ""));
 
 	if (ras_dec_parseopts(optstr, &opts)) {
 		goto error;
@@ -189,11 +190,11 @@ jas_image_t *ras_decode(jas_stream_t *in, const char *optstr)
 
 	if (!jas_safe_size_mul3(hdr.width, hdr.height, (hdr.depth + 7) / 8,
 	  &num_samples)) {
-		jas_eprintf("image too large\n");
+		jas_logerrorf("image too large\n");
 		goto error;
 	}
 	if (opts.max_samples > 0 && num_samples > opts.max_samples) {
-		jas_eprintf(
+		jas_logerrorf(
 		  "maximum number of samples would be exceeded (%zu > %zu)\n",
 		  num_samples, opts.max_samples);
 		goto error;
@@ -264,28 +265,13 @@ error:
 int ras_validate(jas_stream_t *in)
 {
 	jas_uchar buf[RAS_MAGICLEN];
-	int i;
-	int n;
 	uint_fast32_t magic;
 
 	assert(JAS_STREAM_MAXPUTBACK >= RAS_MAGICLEN);
 
 	/* Read the validation data (i.e., the data used for detecting
 	  the format). */
-	if ((n = jas_stream_read(in, buf, RAS_MAGICLEN)) < 0) {
-		return -1;
-	}
-
-	/* Put the validation data back onto the stream, so that the
-	  stream position will not be changed. */
-	for (i = n - 1; i >= 0; --i) {
-		if (jas_stream_ungetc(in, buf[i]) == EOF) {
-			return -1;
-		}
-	}
-
-	/* Did we read enough data? */
-	if (n < RAS_MAGICLEN) {
+	if (jas_stream_peek(in, buf, sizeof(buf)) != sizeof(buf)) {
 		return -1;
 	}
 
@@ -296,6 +282,9 @@ int ras_validate(jas_stream_t *in)
 
 	/* Is the signature correct for the Sun Rasterfile format? */
 	if (magic != RAS_MAGIC) {
+		JAS_LOGDEBUGF(20, "bad signature (0x%08lx != 0x%08lx)\n",
+		  JAS_CAST(unsigned long, magic),
+		  JAS_CAST(unsigned long, RAS_MAGIC));
 		return -1;
 	}
 	return 0;
@@ -312,13 +301,12 @@ static int ras_getdata(jas_stream_t *in, ras_hdr_t *hdr, ras_cmap_t *cmap,
 		ret = ras_getdatastd(in, hdr, cmap, image);
 		break;
 	case RAS_TYPE_RLE:
-		jas_eprintf("error: RLE encoding method not supported\n");
+		jas_logerrorf("error: RLE encoding method not supported\n");
 		ret = -1;
 		break;
 	default:
-		jas_eprintf("error: encoding method not supported\n");
+		jas_logerrorf("error: encoding method not supported\n");
 		ret = -1;
-		break;
 	}
 	return ret;
 }
@@ -333,20 +321,19 @@ static int ras_getdatastd(jas_stream_t *in, ras_hdr_t *hdr, ras_cmap_t *cmap,
 	int y;
 	int x;
 	int v;
-	int i;
 	jas_matrix_t *data[3];
 
-/* Note: This function does not properly handle images with a colormap. */
-	/* Avoid compiler warnings about unused parameters. */
-	cmap = 0;
+	/* Note: This function does not properly handle images with a colormap. */
+
+	JAS_UNUSED(cmap);
 
 	assert(jas_image_numcmpts(image) <= 3);
 
-	for (i = 0; i < 3; ++i) {
+	for (unsigned i = 0; i < 3; ++i) {
 		data[i] = 0;
 	}
 
-	for (i = 0; i < jas_image_numcmpts(image); ++i) {
+	for (unsigned i = 0; i < jas_image_numcmpts(image); ++i) {
 		if (!(data[i] = jas_matrix_create(1, jas_image_width(image)))) {
 			goto error;
 		}
@@ -383,7 +370,7 @@ static int ras_getdatastd(jas_stream_t *in, ras_hdr_t *hdr, ras_cmap_t *cmap,
 				goto error;
 			}
 		}
-		for (i = 0; i < jas_image_numcmpts(image); ++i) {
+		for (unsigned i = 0; i < jas_image_numcmpts(image); ++i) {
 			if (jas_image_writecmpt(image, i, 0, y, hdr->width, 1,
 			  data[i])) {
 				goto error;
@@ -391,7 +378,7 @@ static int ras_getdatastd(jas_stream_t *in, ras_hdr_t *hdr, ras_cmap_t *cmap,
 		}
 	}
 
-	for (i = 0; i < jas_image_numcmpts(image); ++i) {
+	for (unsigned i = 0; i < jas_image_numcmpts(image); ++i) {
 		jas_matrix_destroy(data[i]);
 		data[i] = 0;
 	}
@@ -399,7 +386,7 @@ static int ras_getdatastd(jas_stream_t *in, ras_hdr_t *hdr, ras_cmap_t *cmap,
 	return 0;
 
 error:
-	for (i = 0; i < 3; ++i) {
+	for (unsigned i = 0; i < 3; ++i) {
 		if (data[i]) {
 			jas_matrix_destroy(data[i]);
 		}
@@ -421,7 +408,7 @@ static int ras_getcmap(jas_stream_t *in, ras_hdr_t *hdr, ras_cmap_t *cmap)
 		break;
 	case RAS_MT_EQUALRGB:
 		{
-		jas_eprintf("warning: palettized images not fully supported\n");
+		jas_logwarnf("warning: palettized images not fully supported\n");
 		numcolors = 1 << hdr->depth;
 		if (numcolors > RAS_CMAP_MAXSIZ) {
 			return -1;
@@ -458,7 +445,6 @@ static int ras_getcmap(jas_stream_t *in, ras_hdr_t *hdr, ras_cmap_t *cmap)
 		break;
 	default:
 		return -1;
-		break;
 	}
 
 	return 0;

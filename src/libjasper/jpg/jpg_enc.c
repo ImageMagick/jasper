@@ -63,18 +63,17 @@
 * Includes.
 \******************************************************************************/
 
-#include <assert.h>
-#include "jasper/jas_types.h"
+#include "jpg_enc.h"
+#include "jpg_jpeglib.h"
 
+#include "jasper/jas_types.h"
 #include "jasper/jas_tvp.h"
 #include "jasper/jas_stream.h"
 #include "jasper/jas_image.h"
-#include "jasper/jas_string.h"
 #include "jasper/jas_debug.h"
 
-#include "jpg_jpeglib.h"
-#include "jpg_cod.h"
-#include "jpg_enc.h"
+#include <assert.h>
+#include <stdlib.h>
 
 /******************************************************************************\
 * Types.
@@ -113,7 +112,11 @@ typedef enum {
 	OPT_QUAL
 } jpg_optid_t;
 
-static jas_taginfo_t jpg_opttab[] = {
+/******************************************************************************\
+* Data.
+\******************************************************************************/
+
+static const jas_taginfo_t jpg_opttab[] = {
 	{OPT_QUAL, "quality"},
 	{-1, 0}
 };
@@ -146,8 +149,7 @@ static int jpg_copyfiletostream(jas_stream_t *out, FILE *in)
 
 static void jpg_start_input(j_compress_ptr cinfo, struct jpg_src_s *sinfo)
 {
-	/* Avoid compiler warnings about unused parameters. */
-	cinfo = 0;
+	JAS_UNUSED(cinfo);
 
 	sinfo->row = 0;
 }
@@ -183,9 +185,8 @@ static JDIMENSION jpg_get_pixel_rows(j_compress_ptr cinfo, struct jpg_src_s *sin
 
 static void jpg_finish_input(j_compress_ptr cinfo, struct jpg_src_s *sinfo)
 {
-	/* Avoid compiler warnings about unused parameters. */
-	cinfo = 0;
-	sinfo = 0;
+	JAS_UNUSED(cinfo);
+	JAS_UNUSED(sinfo);
 }
 
 /******************************************************************************\
@@ -212,13 +213,13 @@ int jpg_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 	output_file = 0;
 
 	if (jpg_parseencopts(optstr, &encopts)) {
-		goto error;
+		return -1;
 	}
 
 	switch (jas_clrspc_fam(jas_image_clrspc(image))) {
 	case JAS_CLRSPC_FAM_RGB:
 		if (jas_image_clrspc(image) != JAS_CLRSPC_SRGB)
-			jas_eprintf("warning: inaccurate color\n");
+			jas_logwarnf("warning: inaccurate color\n");
 		enc->numcmpts = 3;
 		if ((enc->cmpts[0] = jas_image_getcmptbytype(image,
 		  JAS_IMAGE_CT_COLOR(JAS_CLRSPC_CHANIND_RGB_R))) < 0 ||
@@ -226,13 +227,13 @@ int jpg_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 		  JAS_IMAGE_CT_COLOR(JAS_CLRSPC_CHANIND_RGB_G))) < 0 ||
 		  (enc->cmpts[2] = jas_image_getcmptbytype(image,
 		  JAS_IMAGE_CT_COLOR(JAS_CLRSPC_CHANIND_RGB_B))) < 0) {
-			jas_eprintf("error: missing color component\n");
-			goto error;
+			jas_logerrorf("error: missing color component\n");
+			return -1;
 		}
 		break;
 	case JAS_CLRSPC_FAM_YCBCR:
 		if (jas_image_clrspc(image) != JAS_CLRSPC_SYCBCR)
-			jas_eprintf("warning: inaccurate color\n");
+			jas_logwarnf("warning: inaccurate color\n");
 		enc->numcmpts = 3;
 		if ((enc->cmpts[0] = jas_image_getcmptbytype(image,
 		  JAS_IMAGE_CT_COLOR(JAS_CLRSPC_CHANIND_YCBCR_Y))) < 0 ||
@@ -240,24 +241,23 @@ int jpg_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 		  JAS_IMAGE_CT_COLOR(JAS_CLRSPC_CHANIND_YCBCR_CB))) < 0 ||
 		  (enc->cmpts[2] = jas_image_getcmptbytype(image,
 		  JAS_IMAGE_CT_COLOR(JAS_CLRSPC_CHANIND_YCBCR_CR))) < 0) {
-			jas_eprintf("error: missing color component\n");
-			goto error;
+			jas_logerrorf("error: missing color component\n");
+			return -1;
 		}
 		break;
 	case JAS_CLRSPC_FAM_GRAY:
 		if (jas_image_clrspc(image) != JAS_CLRSPC_SGRAY)
-			jas_eprintf("warning: inaccurate color\n");
+			jas_logwarnf("warning: inaccurate color\n");
 		enc->numcmpts = 1;
 		if ((enc->cmpts[0] = jas_image_getcmptbytype(image,
 		  JAS_IMAGE_CT_COLOR(JAS_CLRSPC_CHANIND_GRAY_Y))) < 0) {
-			jas_eprintf("error: missing color component\n");
-			goto error;
+			jas_logerrorf("error: missing color component\n");
+			return -1;
 		}
 		break;
 	default:
-		jas_eprintf("error: JPG format does not support color space\n");
-		goto error;
-		break;
+		jas_logerrorf("error: JPG format does not support color space\n");
+		return -1;
 	}
 
 	width = jas_image_width(image);
@@ -272,13 +272,13 @@ int jpg_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 		  jas_image_cmptvstep(image, enc->cmpts[cmptno]) != 1 ||
 		  jas_image_cmptprec(image, enc->cmpts[cmptno]) != 8 ||
 		  jas_image_cmptsgnd(image, enc->cmpts[cmptno]) != false) {
-			jas_eprintf("error: The JPG encoder cannot handle an image with this geometry.\n");
-			goto error;
+			jas_logerrorf("error: The JPG encoder cannot handle an image with this geometry.\n");
+			return -1;
 		}
 	}
 
 	if (!(output_file = tmpfile())) {
-		goto error;
+		return -1;
 	}
 
 	/* Create a JPEG compression object. */
@@ -337,12 +337,6 @@ int jpg_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 	output_file = 0;
 
 	return 0;
-
-error:
-	if (output_file) {
-		fclose(output_file);
-	}
-	return -1;
 }
 
 static J_COLOR_SPACE tojpgcs(int colorspace)
@@ -350,16 +344,12 @@ static J_COLOR_SPACE tojpgcs(int colorspace)
 	switch (jas_clrspc_fam(colorspace)) {
 	case JAS_CLRSPC_FAM_RGB:
 		return JCS_RGB;
-		break;
 	case JAS_CLRSPC_FAM_YCBCR:
 		return JCS_YCbCr;
-		break;
 	case JAS_CLRSPC_FAM_GRAY:
 		return JCS_GRAYSCALE;
-		break;
 	default:
 		abort();
-		break;
 	}
 }
 
@@ -367,7 +357,7 @@ static J_COLOR_SPACE tojpgcs(int colorspace)
 static int jpg_parseencopts(const char *optstr, jpg_encopts_t *encopts)
 {
 	jas_tvparser_t *tvp;
-	char *qual_str;
+	const char *qual_str;
 	int ret;
 
 	tvp = 0;
@@ -387,13 +377,13 @@ static int jpg_parseencopts(const char *optstr, jpg_encopts_t *encopts)
 		case OPT_QUAL:
 			qual_str = jas_tvparser_getval(tvp);
 			if (sscanf(qual_str, "%d", &encopts->qual) != 1) {
-				jas_eprintf("ignoring bad quality specifier %s\n",
+				jas_logwarnf("ignoring bad quality specifier %s\n",
 					jas_tvparser_getval(tvp));
 				encopts->qual = -1;
 			}
 			break;
 		default:
-			jas_eprintf("warning: ignoring invalid option %s\n",
+			jas_logwarnf("warning: ignoring invalid option %s\n",
 			  jas_tvparser_gettag(tvp));
 			break;
 		}

@@ -1,17 +1,23 @@
-#! /bin/bash
+#! /usr/bin/env bash
 # Copyright (c) 2016 Michael David Adams
 
 cmd_dir=$(dirname "$0") || exit 1
 source "$cmd_dir/utilities" || exit 1
 source "$cmd_dir/jpcod" || exit 1
 
+debug_level="${JAS_DEBUG_LEVEL:-0}"
+if [ "$debug_level" -ge 1 ]; then
+	set -xv
+fi
+
 set_source_and_build_dirs || panic "cannot set source and build directories"
 tmp_dir=$(make_tmp_dir)
 
 init
 
-export IMGINFO_COMMAND="$abs_top_builddir/src/appl/imginfo"
-IMGCMP="$abs_top_builddir/src/appl/imgcmp"
+IMGCMP="$abs_top_builddir/src/app/imgcmp"
+export IMGINFO_COMMAND="$abs_top_builddir/src/app/imginfo"
+export JASPER_COMMAND="$abs_top_builddir/src/app/jasper"
 
 MKDATA=1
 DATADIR="$tmp_dir"
@@ -56,15 +62,16 @@ tests=()
 enc=jasper
 dec=jasper
 skip_bugs=1
+exclude_tests=()
 
-while getopts d:e:i:vBE: opt; do
+while getopts d:e:i:vBE:I:X: opt; do
 	case "$opt" in
 	d)
 		dec="$OPTARG";;
 	e)
 		enc="$OPTARG";;
 	i)
-		image_path="$image_path:$OPTARG";;
+		image_path="$image_path;$OPTARG";;
 	v)
 		verbose=$((verbose + 1));;
 	B)
@@ -85,6 +92,10 @@ while getopts d:e:i:vBE: opt; do
 			;;
 		esac
 		;;
+	I)
+		tests+=("$OPTARG");;
+	X)
+		exclude_tests+=("$OPTARG");;
 	\?)
 		usage
 		break;;
@@ -93,7 +104,7 @@ done
 shift $((OPTIND - 1))
 
 if [ $# -ge 1 ]; then
-	tests=("$@")
+	tests+=("$@")
 fi
 
 ################################################################################
@@ -103,6 +114,29 @@ fi
 #if [ -z "${tests[@]}" ]; then
 if [ "${#tests[@]}" -eq 0 ]; then
 	tcf_gettestids "$test_file" tests || panic "cannot get tests"
+fi
+
+# Remove any excluded tests from the list of tests to be run.
+tmp_tests=()
+for test in "${tests[@]}"; do
+	exclude=0
+	for exclude_test in "${exclude_tests[@]}"; do
+		if [ "$exclude_test" = "$test" ]; then
+			exclude=1
+			break
+		fi
+	done
+	if [ "$exclude" -eq 0 ]; then
+		tmp_tests+=("$test")
+	fi
+done
+tests=("${tmp_tests[@]}")
+
+if [ "$verbose" -ge 1 ]; then
+	echo "The following tests have been selected:"
+	for test in "${tests[@]}"; do
+		echo "    $test"
+	done
 fi
 
 [ -d $TMPDIR ] || mkdir -p $TMPDIR
@@ -287,7 +321,8 @@ for test in "${tests[@]}"; do
 	if [ $rate = 0 ]; then
 		target_size=0
 	else
-		target_size=$(evalexpr "$image_size * $rate + 1" | realtoint) || panic
+		target_size=$(evalexpr "$image_size * $rate + 1" | realtoint) || \
+		  panic "calculation failed"
 	fi
 
 	enc_file="$TMPDIR/test.$enc_fmt"
@@ -377,7 +412,8 @@ for test in "${tests[@]}"; do
 
 	FILE0=$(pnutod $in_file)
 	FILE1=$(pnutod $dec_file)
-	PAE=$($IMGCMP -f $FILE0 -F $FILE1 -m pae --max 2> /dev/null) || panic
+	PAE=$($IMGCMP -f $FILE0 -F $FILE1 -m pae --max 2> /dev/null) || \
+	  panic "image comparison failed"
 	if [ -z "$PAE" ]; then
 		echo "cannot get PAE $FILE0 $FILE1"
 		exit 1

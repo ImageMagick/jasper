@@ -59,10 +59,9 @@
  * __END_OF_JASPER_LICENSE__
  */
 
-/*
- * Debugging-Related Code
- *
- * $Id$
+/*!
+ * @file jas_debug.h
+ * @brief JasPer Debugging-Related Functionality
  */
 
 #ifndef JAS_DEBUG_H
@@ -75,10 +74,11 @@
 /* The configuration header file should be included first. */
 #include <jasper/jas_config.h>
 
-#include <stdio.h>
+#include "jasper/jas_init.h"
+#include "jasper/jas_debug.h"
 
-#include <jasper/jas_types.h>
-#include <jasper/jas_debug.h>
+#include <stdio.h>
+#include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -92,30 +92,112 @@ extern "C" {
   level is set sufficiently high. */
 #if !defined(NDEBUG)
 #define	JAS_DBGLOG(n, x) \
-	((jas_getdbglevel() >= (n)) ? (jas_eprintf x) : 0)
+	((jas_get_debug_level() >= (n)) ? (jas_eprintf x) : 0)
 #else
 #define	JAS_DBGLOG(n, x)
 #endif
 
-/* Get the library debug level. */
-JAS_DLLEXPORT int jas_getdbglevel(void);
+#if !defined(NDEBUG)
+#define	JAS_LOGDEBUGF(n, ...) \
+	((jas_get_debug_level() >= (n)) ? jas_logdebugf((n), __VA_ARGS__) : 0)
+#else
+#define	JAS_LOGDEBUGF(n, ...)
+#endif
 
-/* Set the library debug level. */
-JAS_DLLEXPORT int jas_setdbglevel(int dbglevel);
+/*!
+@brief
+Warn about the use of deprecated functionality.
+*/
+JAS_EXPORT
+void jas_deprecated(const char *fmt, ...);
 
-/* Perform formatted output to standard error. */
-JAS_DLLEXPORT int jas_eprintf(const char *fmt, ...);
+/*!
+@brief
+Get the library debug level.
 
-/* Dump memory to a stream. */
-int jas_memdump(FILE *out, void *data, size_t len);
+@deprecated
+This function is deprecated.
+*/
+JAS_DEPRECATED
+static inline
+int jas_getdbglevel(void)
+{
+	jas_deprecated("jas_getdbglevel is deprecated\n");
+	return jas_get_debug_level();
+}
 
-/* Warn about use of deprecated functionality. */
-void jas_deprecated(const char *s);
+/*!
+@brief
+Set the library debug level.
+*/
+JAS_EXPORT
+int jas_setdbglevel(int dbglevel);
 
-/* Convert to a string literal */
+/*!
+@brief
+Print formatted text for the standard error stream (i.e., stderr).
+*/
+JAS_EXPORT
+int jas_eprintf(const char *fmt, ...);
+
+/*!
+@brief
+Generate a generic log message.
+*/
+JAS_EXPORT
+int jas_logprintf(const char *fmt, ...);
+
+/*!
+@brief
+Generate an error log message.
+*/
+JAS_EXPORT
+int jas_logerrorf(const char *fmt, ...);
+
+/*!
+@brief
+Generate a warning log message.
+*/
+JAS_EXPORT
+int jas_logwarnf(const char *fmt, ...);
+
+/*!
+@brief
+Generate an informational log message.
+*/
+JAS_EXPORT
+int jas_loginfof(const char *fmt, ...);
+
+/*!
+@brief
+Generate a debugging log message.
+*/
+JAS_EXPORT
+int jas_logdebugf(int priority, const char *fmt, ...);
+
+/*!
+@brief
+Dump memory.
+*/
+int jas_logmemdump(const void *data, size_t len);
+
+/*!
+@brief
+Dump memory to a stream.
+*/
+JAS_EXPORT
+int jas_memdump(FILE *out, const void *data, size_t len);
+
+/*!
+@brief
+Convert to a string literal.
+*/
 #define JAS_STRINGIFY(x) #x
 
-/* Convert to a string literal after macro expansion */
+/*!
+@brief
+Convert to a string literal after macro expansion.
+*/
 #define JAS_STRINGIFYX(x) JAS_STRINGIFY(x)
 
 #ifdef __cplusplus

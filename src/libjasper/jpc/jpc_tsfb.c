@@ -71,31 +71,39 @@
 * Includes.
 \******************************************************************************/
 
-#include <assert.h>
-
-#include "jasper/jas_malloc.h"
-#include "jasper/jas_seq.h"
-
 #include "jpc_tsfb.h"
-#include "jpc_cod.h"
 #include "jpc_cs.h"
-#include "jpc_util.h"
 #include "jpc_math.h"
 #include "jpc_fix.h"
 
-void jpc_tsfb_getbands2(jpc_tsfb_t *tsfb, int locxstart, int locystart,
+#include "jasper/jas_seq.h"
+#include "jasper/jas_malloc.h"
+
+#include <stdlib.h>
+
+/******************************************************************************\
+* Function prototypes.
+\******************************************************************************/
+
+static int jpc_tsfb_analyze2(jpc_tsfb_t *tsfb, jpc_fix_t *a, int xstart, int ystart,
+  unsigned width, unsigned height, unsigned stride, unsigned numlvls);
+
+static int jpc_tsfb_synthesize2(jpc_tsfb_t *tsfb, jpc_fix_t *a, int xstart, int ystart,
+  unsigned width, unsigned height, unsigned stride, unsigned numlvls);
+
+static void jpc_tsfb_getbands2(jpc_tsfb_t *tsfb, int locxstart, int locystart,
   int xstart, int ystart, int xend, int yend, jpc_tsfb_band_t **bands,
-  int numlvls);
+  unsigned numlvls);
 
 /******************************************************************************\
 *
 \******************************************************************************/
 
-jpc_tsfb_t *jpc_cod_gettsfb(int qmfbid, int numlvls)
+jpc_tsfb_t *jpc_cod_gettsfb(unsigned qmfbid, unsigned numlvls)
 {
 	jpc_tsfb_t *tsfb;
 
-	if (!(tsfb = malloc(sizeof(jpc_tsfb_t))))
+	if (!(tsfb = jas_malloc(sizeof(jpc_tsfb_t))))
 		return 0;
 
 	if (numlvls > 0) {
@@ -117,47 +125,56 @@ jpc_tsfb_t *jpc_cod_gettsfb(int qmfbid, int numlvls)
 
 void jpc_tsfb_destroy(jpc_tsfb_t *tsfb)
 {
-	free(tsfb);
+	jas_free(tsfb);
 }
 
 int jpc_tsfb_analyze(jpc_tsfb_t *tsfb, jas_seq2d_t *a)
 {
-	return (tsfb->numlvls > 0) ? jpc_tsfb_analyze2(tsfb, jas_seq2d_getref(a,
-	  jas_seq2d_xstart(a), jas_seq2d_ystart(a)), jas_seq2d_xstart(a),
-	  jas_seq2d_ystart(a), jas_seq2d_width(a),
-	  jas_seq2d_height(a), jas_seq2d_rowstep(a), tsfb->numlvls - 1) : 0;
+	if (tsfb->numlvls == 0)
+		return 0;
+
+	return jpc_tsfb_analyze2(tsfb,
+				 jas_seq2d_getref(a, jas_seq2d_xstart(a), jas_seq2d_ystart(a)),
+				 jas_seq2d_xstart(a), jas_seq2d_ystart(a),
+				 jas_seq2d_width(a), jas_seq2d_height(a),
+				 jas_seq2d_rowstep(a), tsfb->numlvls - 1);
 }
 
-int jpc_tsfb_analyze2(jpc_tsfb_t *tsfb, jpc_fix_t *a, int xstart, int ystart,
-  int width, int height, int stride, int numlvls)
+static int jpc_tsfb_analyze2(jpc_tsfb_t *tsfb, jpc_fix_t *a, int xstart, int ystart,
+  unsigned width, unsigned height, unsigned stride, unsigned numlvls)
 {
-	if (width > 0 && height > 0) {
-		if ((*tsfb->qmfb->analyze)(a, xstart, ystart, width, height, stride))
-			return -1;
-		if (numlvls > 0) {
-			if (jpc_tsfb_analyze2(tsfb, a, JPC_CEILDIVPOW2(xstart,
-			  1), JPC_CEILDIVPOW2(ystart, 1), JPC_CEILDIVPOW2(
-			  xstart + width, 1) - JPC_CEILDIVPOW2(xstart, 1),
-			  JPC_CEILDIVPOW2(ystart + height, 1) -
-			  JPC_CEILDIVPOW2(ystart, 1), stride, numlvls - 1)) {
-				return -1;
-			}
-		}
-	}
-	return 0;
+	if (width == 0 || height == 0)
+		return 0;
+
+	if ((*tsfb->qmfb->analyze)(a, xstart, ystart, width, height, stride))
+		return -1;
+
+	if (numlvls == 0)
+		return 0;
+
+	return jpc_tsfb_analyze2(tsfb, a,
+				 JPC_CEILDIVPOW2(xstart, 1),
+				 JPC_CEILDIVPOW2(ystart, 1),
+				 JPC_CEILDIVPOW2(xstart + width, 1) - JPC_CEILDIVPOW2(xstart, 1),
+				 JPC_CEILDIVPOW2(ystart + height, 1) - JPC_CEILDIVPOW2(ystart, 1),
+				 stride, numlvls - 1);
 }
 
 int jpc_tsfb_synthesize(jpc_tsfb_t *tsfb, jas_seq2d_t *a)
 {
-	return (tsfb->numlvls > 0 && jas_seq2d_size(a)) ?
-	  jpc_tsfb_synthesize2(tsfb,
-	  jas_seq2d_getref(a, jas_seq2d_xstart(a), jas_seq2d_ystart(a)),
-	  jas_seq2d_xstart(a), jas_seq2d_ystart(a), jas_seq2d_width(a),
-	  jas_seq2d_height(a), jas_seq2d_rowstep(a), tsfb->numlvls - 1) : 0;
+	if (tsfb->numlvls == 0 || jas_seq2d_empty(a))
+		return 0;
+
+	return jpc_tsfb_synthesize2(tsfb,
+				    jas_seq2d_getref(a, jas_seq2d_xstart(a), jas_seq2d_ystart(a)),
+				    jas_seq2d_xstart(a), jas_seq2d_ystart(a),
+				    jas_seq2d_width(a), jas_seq2d_height(a),
+				    jas_seq2d_rowstep(a),
+				    tsfb->numlvls - 1);
 }
 
-int jpc_tsfb_synthesize2(jpc_tsfb_t *tsfb, jpc_fix_t *a, int xstart, int ystart,
-  int width, int height, int stride, int numlvls)
+static int jpc_tsfb_synthesize2(jpc_tsfb_t *tsfb, jpc_fix_t *a, int xstart, int ystart,
+  unsigned width, unsigned height, unsigned stride, unsigned numlvls)
 {
 	if (numlvls > 0) {
 		if (jpc_tsfb_synthesize2(tsfb, a, JPC_CEILDIVPOW2(xstart, 1),
@@ -168,12 +185,11 @@ int jpc_tsfb_synthesize2(jpc_tsfb_t *tsfb, jpc_fix_t *a, int xstart, int ystart,
 			return -1;
 		}
 	}
-	if (width > 0 && height > 0) {
-		if ((*tsfb->qmfb->synthesize)(a, xstart, ystart, width, height, stride)) {
-			return -1;
-		}
-	}
-	return 0;
+
+	if (width == 0 || height == 0)
+		return 0;
+
+	return tsfb->qmfb->synthesize(a, xstart, ystart, width, height, stride);
 }
 
 int jpc_tsfb_getbands(jpc_tsfb_t *tsfb, uint_fast32_t xstart,
@@ -205,7 +221,7 @@ int jpc_tsfb_getbands(jpc_tsfb_t *tsfb, uint_fast32_t xstart,
 
 void jpc_tsfb_getbands2(jpc_tsfb_t *tsfb, int locxstart, int locystart,
   int xstart, int ystart, int xend, int yend, jpc_tsfb_band_t **bands,
-  int numlvls)
+  unsigned numlvls)
 {
 	int newxstart;
 	int newystart;

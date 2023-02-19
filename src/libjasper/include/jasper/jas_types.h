@@ -61,10 +61,9 @@
  * __END_OF_JASPER_LICENSE__
  */
 
-/*
- * Primitive Types
- *
- * $Id$
+/*!
+ * @file jas_types.h
+ * @brief Primitive Types
  */
 
 #ifndef JAS_TYPES_H
@@ -73,34 +72,18 @@
 /* The configuration header file should be included first. */
 #include <jasper/jas_config.h>
 
-#if !defined(JAS_CONFIGURE)
-
-#if defined(WIN32) || defined(JAS_HAVE_WINDOWS_H)
-// THIS SHOULD NO LONGER BE NEEDED SINCE MSVC SUPPORTS LONG LONG.
-/*
-   We are dealing with Microsoft Windows and most likely Microsoft
-   Visual C (MSVC).  (Heaven help us.)  Sadly, MSVC does not correctly
-   define some of the standard types specified in ISO/IEC 9899:1999.
-   In particular, it does not define the "long long" and "unsigned long
-   long" types.  So, we work around this problem by using the "INT64"
-   and "UINT64" types that are defined in the header file "windows.h".
- */
-#include <windows.h>
-//#undef longlong
-//#define	longlong	INT64
-//#undef ulonglong
-//#define	ulonglong	UINT64
-#endif
-
-#endif
-
 /* Note: The immediately following header files should eventually be removed. */
-#include <stdlib.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <stddef.h> /* IWYU pragma: export */
+#include <stdint.h> /* IWYU pragma: export */
+
+#include <limits.h> /* IWYU pragma: export */
 
 #if defined(JAS_HAVE_SYS_TYPES_H)
-#include <sys/types.h>
+#include <sys/types.h> /* IWYU pragma: export */
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 #define jas_uchar unsigned char
@@ -108,6 +91,31 @@
 #define jas_ulong unsigned long
 #define jas_longlong long long
 #define jas_ulonglong unsigned long long
+
+#if !defined(JAS_NO_SET_SSIZE_T)
+#	if !defined(SSIZE_MAX)
+#		if (JAS_SIZEOF_INT == JAS_SIZEOF_SIZE_T)
+#			define ssize_t int
+#			define SSIZE_MAX INT_MAX
+#		elif (JAS_SIZEOF_LONG == JAS_SIZEOF_SIZE_T)
+#			define ssize_t long
+#			define SSIZE_MAX LONG_MAX
+#		else
+#			define ssize_t jas_longlong
+#			define SSIZE_MAX LLONG_MAX
+#		endif
+#	endif
+#endif
+
+#if 0
+#if defined(JAS_HAVE_SSIZE_T)
+#define jas_ssize_t ssize_t
+#define JAS_SSIZE_MAX SSIZE_MAX
+#else
+#define jas_ssize_t jas_longlong
+#define JAS_SSIZE_MAX LLONG_MAX
+#endif
+#endif
 
 #if defined(_MSC_VER) && (_MSC_VER < 1800)
 #define bool  int
@@ -134,8 +142,8 @@
 #define strtoull _strtoui64
 
 #else
-#include <stdbool.h>
-#include <inttypes.h>
+#include <stdbool.h> /* IWYU pragma: export */
+#include <inttypes.h> /* IWYU pragma: export */
 #endif
 
 /* The below macro is intended to be used for type casts.  By using this
@@ -148,8 +156,49 @@
 /* NOTE: This could underestimate the size on some exotic architectures. */
 #define JAS_UINTFAST32_NUMBITS (8 * sizeof(uint_fast32_t))
 
-#ifdef __cplusplus
-extern "C" {
+#if 0
+#if defined(JAS_HAVE_MAX_ALIGN_T)
+#define	jas_max_align_t	max_align_t
+#else
+#define	jas_max_align_t	long double
+#endif
+#endif
+
+/*
+Assume that a compiler claiming to be compliant with C11 or a later version
+of the C standard provides a suitable definition of max_align_t.
+The JAS_NO_SET_MAX_ALIGN_T preprocessor symbol can be used to override
+this behavior.
+*/
+#if defined(JAS_NO_SET_MAX_ALIGN_T)
+	/*
+	The user of this header is assuming responsibility for providing a
+	suitable definition for max_align_t.
+	*/
+#elif defined(_MSC_VER)
+	/*
+	Define max_align_t as a preprocessor symbol since using typedef will
+	cause problems.
+	*/
+#	define max_align_t long double
+#elif !(defined(__STDC_VERSION__) && (__STDC_VERSION__ - 0 >= 201112L))
+#	define max_align_t long double
+#endif
+
+#if 0
+#if defined(JAS_HAVE_UINTMAX_T)
+#define jas_uintmax_t uintmax_t
+#else
+#define jas_uintmax_t uint_fast64_t
+#endif
+#endif
+
+#if 0
+#if defined(JAS_HAVE_INTMAX_T)
+#define jas_intmax_t intmax_t
+#else
+#define jas_intmax_t int_fast64_t
+#endif
 #endif
 
 #ifdef __cplusplus

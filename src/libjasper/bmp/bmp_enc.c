@@ -71,15 +71,17 @@
 * Includes.
 \******************************************************************************/
 
-#include <assert.h>
+#include "bmp_enc.h"
+#include "bmp_cod.h"
 
 #include "jasper/jas_types.h"
 #include "jasper/jas_stream.h"
 #include "jasper/jas_image.h"
 #include "jasper/jas_debug.h"
 
-#include "bmp_enc.h"
-#include "bmp_cod.h"
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 /******************************************************************************\
 * Local prototypes.
@@ -97,9 +99,6 @@ static int bmp_putint32(jas_stream_t *out, int_fast32_t val);
 
 int bmp_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 {
-	jas_image_coord_t width;
-	jas_image_coord_t height;
-	int depth;
 	int cmptno;
 	bmp_hdr_t hdr;
 	bmp_info_t *info;
@@ -110,23 +109,22 @@ int bmp_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 	jas_clrspc_t clrspc;
 
 	if (optstr) {
-		jas_eprintf("warning: ignoring BMP encoder options\n");
+		jas_logwarnf("warning: ignoring BMP encoder options\n");
 	}
 
 	clrspc = jas_image_clrspc(image);
 	switch (jas_clrspc_fam(clrspc)) {
 	case JAS_CLRSPC_FAM_RGB:
 		if (clrspc != JAS_CLRSPC_SRGB)
-			jas_eprintf("warning: inaccurate color\n");
+			jas_logwarnf("warning: inaccurate color\n");
 		break;
 	case JAS_CLRSPC_FAM_GRAY:
 		if (clrspc != JAS_CLRSPC_SGRAY)
-			jas_eprintf("warning: inaccurate color\n");
+			jas_logwarnf("warning: inaccurate color\n");
 		break;
 	default:
-		jas_eprintf("error: BMP format does not support color space\n");
+		jas_logerrorf("error: BMP format does not support color space\n");
 		return -1;
-		break;
 	}
 
 	switch (jas_clrspc_fam(clrspc)) {
@@ -138,7 +136,7 @@ int bmp_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 		  JAS_IMAGE_CT_COLOR(JAS_CLRSPC_CHANIND_RGB_G))) < 0 ||
 		  (enc->cmpts[2] = jas_image_getcmptbytype(image,
 		  JAS_IMAGE_CT_COLOR(JAS_CLRSPC_CHANIND_RGB_B))) < 0) {
-			jas_eprintf("error: missing color component\n");
+			jas_logerrorf("error: missing color component\n");
 			return -1;
 		}
 		break;
@@ -146,18 +144,17 @@ int bmp_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 		enc->numcmpts = 1;
 		if ((enc->cmpts[0] = jas_image_getcmptbytype(image,
 		  JAS_IMAGE_CT_COLOR(JAS_CLRSPC_CHANIND_GRAY_Y))) < 0) {
-			jas_eprintf("error: missing color component\n");
+			jas_logerrorf("error: missing color component\n");
 			return -1;
 		}
 		break;
 	default:
 		abort();
-		break;
 	}
 
-	width = jas_image_cmptwidth(image, enc->cmpts[0]);
-	height = jas_image_cmptheight(image, enc->cmpts[0]);
-	depth = jas_image_cmptprec(image, enc->cmpts[0]);
+	const uint_least32_t width = jas_image_cmptwidth(image, enc->cmpts[0]);
+	const uint_least32_t height = jas_image_cmptheight(image, enc->cmpts[0]);
+	const unsigned depth = jas_image_cmptprec(image, enc->cmpts[0]);
 
 	/* Check to ensure that the image to be saved can actually be represented
 	  using the BMP format. */
@@ -168,7 +165,7 @@ int bmp_encode(jas_image_t *image, jas_stream_t *out, const char *optstr)
 		  jas_image_cmptsgnd(image, enc->cmpts[cmptno]) != false ||
 		  jas_image_cmpttlx(image, enc->cmpts[cmptno]) != 0 ||
 		  jas_image_cmpttly(image, enc->cmpts[cmptno]) != 0) {
-			jas_eprintf("The BMP format cannot be used to represent an image with this geometry.\n");
+			jas_logerrorf("The BMP format cannot be used to represent an image with this geometry.\n");
 			return -1;
 		}
 	}
@@ -295,18 +292,18 @@ static int bmp_putdata(jas_stream_t *out, bmp_info_t *info, jas_image_t *image,
 
 	/* We do not support palettized images. */
 	if (BMP_HASPAL(info) && numcmpts == 3) {
-		jas_eprintf("no palettized image support for BMP format\n");
+		jas_logerrorf("no palettized image support for BMP format\n");
 		return -1;
 	}
 
 	ret = 0;
 	for (i = 0; i < numcmpts; ++i) {
-		bufs[i] = 0;
+		bufs[cmpts[i]] = 0;
 	}
 
 	/* Create temporary matrices to hold component data. */
 	for (i = 0; i < numcmpts; ++i) {
-		if (!(bufs[i] = jas_matrix_create(1, info->width))) {
+		if (!(bufs[cmpts[i]] = jas_matrix_create(1, info->width))) {
 			ret = -1;
 			goto bmp_putdata_done;
 		}
@@ -359,8 +356,8 @@ static int bmp_putdata(jas_stream_t *out, bmp_info_t *info, jas_image_t *image,
 bmp_putdata_done:
 	/* Destroy the temporary matrices. */
 	for (i = 0; i < numcmpts; ++i) {
-		if (bufs[i]) {
-			jas_matrix_destroy(bufs[i]);
+		if (bufs[cmpts[i]]) {
+			jas_matrix_destroy(bufs[cmpts[i]]);
 		}
 	}
 

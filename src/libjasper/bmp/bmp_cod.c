@@ -71,13 +71,11 @@
 * Includes.
 \******************************************************************************/
 
-#include <assert.h>
+#include "bmp_cod.h"
 
-#include "jasper/jas_types.h"
-#include "jasper/jas_image.h"
 #include "jasper/jas_malloc.h"
 
-#include "bmp_cod.h"
+#include <stdlib.h>
 
 /******************************************************************************\
 * Constructors and destructors.
@@ -128,8 +126,8 @@ int bmp_numcmpts(bmp_info_t *info)
 		numcmpts = bmp_isgrayscalepal(info->palents, info->numcolors) ?
 		  1 : 3;
 	} else {
-		numcmpts = 0;
-		abort();
+		/* Cannot determine the number of components. */
+		numcmpts = -1;
 	}
 	return numcmpts;
 }
