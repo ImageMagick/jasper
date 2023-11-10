@@ -71,15 +71,15 @@ The version of the C standard against which JasPer was built.
 /* #undef JAS_HAVE_GLUT_GLUT_H */
 /* #undef JAS_HAVE_GLUT_H */
 
-#define JAS_INCLUDE_PNM_CODEC
-#define JAS_INCLUDE_BMP_CODEC
-#define JAS_INCLUDE_RAS_CODEC
+/* #undef JAS_INCLUDE_PNM_CODEC */
+/* #undef JAS_INCLUDE_BMP_CODEC */
+/* #undef JAS_INCLUDE_RAS_CODEC */
 #define JAS_INCLUDE_JP2_CODEC
 #define JAS_INCLUDE_JPC_CODEC
 /* #undef JAS_INCLUDE_JPG_CODEC */
 /* #undef JAS_INCLUDE_HEIC_CODEC */
-#define JAS_INCLUDE_PGX_CODEC
-#define JAS_INCLUDE_MIF_CODEC
+/* #undef JAS_INCLUDE_PGX_CODEC */
+/* #undef JAS_INCLUDE_MIF_CODEC */
 /* #undef JAS_ENABLE_DANGEROUS_INTERNAL_TESTING_MODE */
 
 #define JAS_ENABLE_PNM_CODEC 1
