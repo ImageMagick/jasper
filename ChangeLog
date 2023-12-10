@@ -1,6 +1,93 @@
+commit 917f7708b755d8434f70618108c1a76f1b6a0a82
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:   Tue Nov 28 09:19:23 2023 -0800
+
+    Updated the NEWS document and bumped the version number.
+
+M	CMakeLists.txt
+M	NEWS.txt
+
+commit d955e6d4c99aa03a3ece61010e8151f5058f0ffa
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:	Mon Nov 27 20:33:35 2023 -0800
+
+    Changed the versions of macOS being tested in the GitHub Actions CI
+    workflow (i.e., added macos-13 and deleted macos-11).
+
+M	.github/workflows/ci.yml
+
+commit dda5d2340221f71a3c25451f1373514ab964f21d
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:	Mon Nov 27 19:33:00 2023 -0800
+
+    Disabled the building of the JasPer documentation in the Appveyor
+    CI to
+    workaround problems with Doxygen/LaTeX in that environment.
+
+M	build/appveyor/build.bat
+
+commit 70168aeb30e56430f16f7f5a7773b3ae0e70f306
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:	Mon Nov 27 19:19:39 2023 -0800
+
+    Changed the versions of Windows Visual Studio being tested with
+    Appveyor CI.
+
+M	appveyor.yml
+
+commit b72e8b048680cf1b5a167a45747b2e9cbb667da5
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:	Mon Nov 27 19:03:58 2023 -0800
+
+    Made some improvements/corrections to the InSourceBuild CMake module.
+
+M	build/cmake/modules/InSourceBuild.cmake
+
+commit 9c73145d615316c7da2d1e19734aac24610d56e2
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:	Mon Nov 27 18:20:11 2023 -0800
+
+    Made a few improvements/corrections to the InSourceBuild CMake module.
+
+M	build/cmake/modules/InSourceBuild.cmake
+
+commit a798ba0ebadc103d5c3bb525bd2b7d0059c98be7
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:	Mon Nov 27 17:43:39 2023 -0800
+
+    Fixes #364.
+
+    Made some changes to the InSourceBuild CMake module in an attempt
+    to prevent CMake-challenged individuals from trashing the source
+    tree when performing a build.
+
+M	CMakeLists.txt
+M	build/cmake/modules/InSourceBuild.cmake
+
+commit 175731c70e14e952ba09f7dded1486d30555ba7e
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:	Fri Nov 17 06:42:59 2023 -0800
+
+    Fixes #363.
+
+    Fixed a potential integer overflow problem in the
+    jas_get_total_mem_size
+    function (for the Windows platform).
+
+M	src/libjasper/base/jas_malloc.c
+
+commit abf85caf71d705d4ee44c66d450a693ecccfc267
+Merge: 5010de0 aa6d42a
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:	Sun Nov 5 13:26:31 2023 -0800
+
+    Merge pull request #362 from jubalh/cve
+
+    Add reference of CVE-2021-3443 to NEWS file
+
 commit 5010de0779d0a7de02426cfe63727bd9a84af7c3
 Author: Michael Adams <mdadams@ece.uvic.ca>
-Date:   Sat Nov 4 21:39:06 2023 -0700
+Date:	Sat Nov 4 21:39:06 2023 -0700
 
     Made a few improvements to the WebAssembly support.
 
@@ -100,6 +187,14 @@ M	build/make_release
 A	build/wasm_cc
 M	src/libjasper/base/jas_stream.c
 M	src/libjasper/include/jasper/jas_stream.h
+
+commit aa6d42a871eab4d4ee52ef5b592bef902986a244
+Author: Michael Vetter <jubalh@iodoru.org>
+Date:	Mon Oct 30 18:51:50 2023 +0100
+
+    Add reference of CVE-2021-3443 to NEWS file
+
+M	NEWS.txt
 
 commit 354722a9a42e502092c31941913f4552bb72eb63
 Author: Michael Adams <mdadams@ece.uvic.ca>
