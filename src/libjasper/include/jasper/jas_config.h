@@ -95,9 +95,9 @@ The version of the C standard against which JasPer was built.
 #define JAS_DEFAULT_MAX_MEM_USAGE 1073741824
 
 #define JAS_THREADS
-#define JAS_THREADS_C11
+//#define JAS_THREADS_C11
 /* #undef JAS_THREADS_PTHREAD */
-/* #undef JAS_THREADS_WIN32 */
+#define JAS_THREADS_WIN32
 
 #define JAS_HAVE_THREAD_LOCAL
 
