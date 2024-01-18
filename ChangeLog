@@ -1,6 +1,58 @@
+commit ff633699cb785967a2cb0084d89d56e53c46e416
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:   Thu Jan 11 07:13:42 2024 -0800
+
+    Updated the NEWS document and bumped the version number.
+
+M	CMakeLists.txt
+M	NEWS.txt
+
+commit 6f47e5a8db62038c88eb38cb81221e4d1ae60f97
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:	Wed Jan 10 21:50:31 2024 -0800
+
+    Fixes #368.
+
+    Added a (previously-missing) range check on the intermediate layer
+    rates
+    in the JPC encoder.
+    Added another image to the test set.
+
+A	data/test/good/368_poc_min.pnm
+M	src/libjasper/jpc/jpc_enc.c
+
+commit ca05a7f4dbf08eb9b3dc63d9ed7ff94055d24f7c
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:	Wed Jan 10 13:00:32 2024 -0800
+
+    Updated the NEWS document (to add a reference to a CVE).
+
+M	NEWS.txt
+
+commit aeef5293c978158255ad4f127089644745602f2a
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:	Thu Dec 14 19:04:19 2023 -0800
+
+    Fixes #367.
+
+    Fixed an integer-overflow bug in the ICC profile parsing code.
+    Added another invalid image to the test set.
+
+A	data/test/bad/367-PoC.jp2
+M	src/libjasper/base/jas_icc.c
+
+commit 2bd1657c07e9815b89d0553c782b841d11630580
+Author: Michael Adams <mdadams@ece.uvic.ca>
+Date:	Fri Dec 1 09:27:08 2023 -0800
+
+    Fixed a potential integer overflow problem in the
+    jas_safeui32_to_intfast32 function.
+
+M	src/libjasper/include/jasper/jas_math.h
+
 commit 917f7708b755d8434f70618108c1a76f1b6a0a82
 Author: Michael Adams <mdadams@ece.uvic.ca>
-Date:   Tue Nov 28 09:19:23 2023 -0800
+Date:	Tue Nov 28 09:19:23 2023 -0800
 
     Updated the NEWS document and bumped the version number.
 
