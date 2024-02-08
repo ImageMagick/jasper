@@ -5,18 +5,7 @@
 #
 ################################################################################
 
-function panic()
-{
-	echo "ERROR: $@" 1>&2
-	exit 1
-}
-
-function eecho()
-{
-	echo "$@" 1>&2
-}
-
-function set_source_and_build_dirs()
+set_source_and_build_dirs()
 {
 	#eecho "JAS_ABS_TOP_BUILDDIR $JAS_ABS_TOP_BUILDDIR"
 	#eecho "JAS_TOP_BUILDDIR $JAS_TOP_BUILDDIR"
@@ -36,7 +25,7 @@ function set_source_and_build_dirs()
 	#eecho "top_srcdir=$top_srcdir"
 }
 
-function get_tmp_dir()
+get_tmp_dir()
 {
 	local package="jasper"
 	if [ $# -ne 1 ]; then
@@ -46,7 +35,7 @@ function get_tmp_dir()
 	echo "/tmp/$package-$USER@$HOSTNAME/$name-$$"
 }
 
-function make_tmp_dir()
+make_tmp_dir()
 {
 	local name
 	if [ $# -ge 1 ]; then
@@ -62,7 +51,7 @@ function make_tmp_dir()
 	echo "$tmp_dir"
 }
 
-function make_tmp_dir_2()
+make_tmp_dir_2()
 {
 	[ $# -eq 1 ] || return 1
 	local template="$1"
@@ -75,7 +64,7 @@ function make_tmp_dir_2()
 # Image characteristics.
 ################################################################################
 
-function image_which()
+image_which()
 {
 	if [ $# -ne 2 ]; then
 		return 2
@@ -94,7 +83,7 @@ function image_which()
 	echo "$file"
 }
 
-function image_info()
+image_info()
 {
 	#eecho "IMGINFO_COMMAND $IMGINFO_COMMAND"
 	if [ $# -ne 2 ]; then
@@ -234,7 +223,7 @@ tcf_gettestids()
 	eval declare -g -a "$name"=\("$buffer"\)
 }
 
-function evaluate_expression()
+evaluate_expression()
 {
 	[ $# -eq 1 ] || return 1
 	local expr="$1"
