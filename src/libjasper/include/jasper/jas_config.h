@@ -99,7 +99,7 @@ The version of the C standard against which JasPer was built.
 /* #undef JAS_THREADS_PTHREAD */
 #define JAS_THREADS_WIN32
 
-#define JAS_HAVE_THREAD_LOCAL
+/* #undef JAS_HAVE_THREAD_LOCAL */
 
 /* #undef JAS_ENABLE_NON_THREAD_SAFE_DEBUGGING */
 
